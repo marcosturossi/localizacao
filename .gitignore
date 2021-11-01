@@ -1,0 +1,8 @@
+*.pyc
+*.pyo
+**/migrations/*
+**.pyc
+**/__pycache__/*
+**/cte/*
+!__init__.py
+

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static%}
+
+{% block content %}
+
+<div class="container">
+  <h1>AutoUDESC</h1>
+  <div class="row">
+    <div class="col-6">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row">
+          {% for foo in form%}
+          <div class="col-6">
+            {{foo.label}}
+            {{foo}}
+           </div>
+          {% endfor %}
+          </div>
+        <div id="before_form">
+          {{ formset.management_form }}
+          {% for form_a in formset %}
+          <div id="form-container">
+            {{ form_a.as_p }}
+            {% endfor %}
+          </div>
+        </div>
+        <button class="btn btn-dark" type="button" id="add-form">Add</button>
+        <button class="btn btn-danger" type="button" id="remove-form">Remove</button>
+        <button class="btn btn-primary" type="submit">Enviar</button>
+      </form>
+    </div>
+    <div class="col-6">
+      {%autoescape off%}
+      {{ request.session.code }}
+      {%endautoescape%}
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/app.js' %}"></script>
+{%endblock%}
