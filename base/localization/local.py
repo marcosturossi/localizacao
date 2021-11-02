@@ -151,17 +151,20 @@ class Supervisor:
 
     def declare_prevent_state(self):
         prevent_events = set()
+        if self.prevent_events is None:
+            self.set_prevent_events()
         for i in self.prevent_events:
             prevent_events.add(i[1])
-        code = "// Eventos desabilitados pelo supervisor \n"
+        code = "      // Eventos desabilitados pelo supervisor \n"
         if self.prevent_events is None:
             self.get_prevent_events()
         for i in prevent_events:
-            code += f"bool D-EV{i[0]}; \n"
+            code += f"      bool D-EV{i[0]} = 0; \n"
+        code += "\n"
         return code
 
     def declare_pin(self):
-        code = "// Definição dos saida GPIO"
+        code = "// Definição dos saida GPIO\n"
         j = 1
         for i in self.format_var():
             code += f"int {i}PIN = {j};\n"
@@ -170,7 +173,7 @@ class Supervisor:
 
     def read_inputs(self):
         """Inicia o código com a leitura das variáveis"""
-        code = ""
+        code = "      //Inicia a leitura das entradas \n"
         var = self.format_var()
         if self.language == "C":
             for i in range(len(sorted(self.all_events))):
@@ -178,10 +181,20 @@ class Supervisor:
                     code += f"      {var[i]} = digitalRead({var[i]}PIN); \n"
         return code
 
-    def prevent_events(self):
+    def format_prevent_events(self):
+        condition1 = 'if'
+        condition2 = 'elif'
         """Desabilitação dos Eventos Controláveis pelo supervisor"""
-        code = "// Desabilitação dos Eventos Controláveis pelo Supervisor\n"
-        # TODO, termina de escrever a função
+        code = "\n      // Desabilitação dos Eventos Controláveis pelo Supervisor\n"
+        j = 0
+        for i in self.prevent_events:
+            if j == 0:
+                code += f"      {condition1}(s_states[{i[0]}] == 1){{ \n"
+            else:
+                code += f"      {condition2}(s_states[{i[0]} == 1]){{ \n"
+            code += f"          D_EV{i[1]} = 1\n" \
+                    f"      }}"
+        return code
 
     def update_state_nc(self, transitions, state_name):
         condition1 = 'if'
@@ -197,18 +210,38 @@ class Supervisor:
                         code += f"      {condition1}({state_name}[{transitions[i][0]}] == "
                     else:
                         code += f"      {condition2}({state_name}[{transitions[i][0]}] == "
-                    code += f"1 and EV{transitions[i][1]} == HIGH){{\n" \
+                    code += f"1 && EV{transitions[i][1]} == HIGH){{\n" \
                             f"          {state_name}[{transitions[i][0]}] = 0;\n" \
                             f"          {state_name}[{transitions[i][2]}] = 1;\n" \
-                            f"          }}\n"
+                            f"      }}\n"
                     j += 1
         return code
+
+    def generate_controlable_pevents(self):
+        condition1 = 'if'
+        condition2 = 'elif'
+        code = "\n      // Geração dos eventos Controláveis e atualização dos estados da planta\n"
+        j = 0
+        for i in self.plant_transitions:
+            if int(i[1]) % 2 != 0:
+                if j == 0:
+                    code += f"      {condition1}(p_state{i[0]} = 1 && D_EV{i[0]} = 0){{\n"
+                else:
+                    code += f"      {condition2}(p_state{i[0]} = 1 && D_EV{i[0]} = 0){{\n"
+                code += f"          p_state[{i[0]}] = 0\n" \
+                f"          p_state[{i[2]}] = 1\n" \
+                f"          EV{i[1]} = 1\n" \
+                f"      }}\n"
+                j +=1
+        return code
+
+    def generate_controlable_sevents(self):
+        pass
 
     def create_loop(self):
         code = "\n"
         if self.language == "C":
-            code = "\n    while(1){\n" \
-                   "\n    //Inicia a leitura das entradas \n"
+            code = "\n    while(1){\n"
         return code
 
     def name(self):
@@ -253,14 +286,15 @@ class SupervisorLocalizado(Supervisor):
         code += self.declare_pin()
         code += self.declare_state()
         code += self.declared_var()
-        code += self.declare_prevent_state()
         code += self.start_function()
         code += self.setup_pin()
 
         # Inicia a lógica de Controle
         code += self.create_loop()
+        code += self.declare_prevent_state()
         code += self.read_inputs()
         code += self.update_state_nc(self.plant_transitions, 'p_state')
         code += self.update_state_nc(self.supervisor_transitions, 's_state')
-        self.set_prevent_events()
+        code += self.format_prevent_events()
+        code += self.generate_controlable_pevents()
         return str(code)
