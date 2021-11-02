@@ -16,6 +16,7 @@ class Supervisor:
         self.plant_states = None
         self.supervisor_states = None
         self.all_states = None
+        self.prevent_events = None
 
     def set_events(self):
         """Adiciona os eventos aos atributos"""
@@ -55,6 +56,34 @@ class Supervisor:
             self.set_state()
         return self.plant_states, self.supervisor_states
 
+    def set_prevent_events(self):
+        controlable_states = []
+        all_possibility = []
+        supervisor_transitions = []
+        prevent_event = []
+        for i in self.supervisor_transitions:
+            if int(i[1]) % 2 != 0:
+                supervisor_transitions.append([i[0], i[1]])
+
+        for i in self.supervisor_events:
+            if int(i) % 2 != 0:
+                controlable_states.append(i)
+
+        # Cria todas as possibilidades
+        for i in self.supervisor_states:
+            for j in controlable_states:
+                all_possibility.append([i, j])
+
+        for i in all_possibility:
+            if i not in supervisor_transitions:
+                prevent_event.append(i)
+        self.prevent_events = prevent_event
+
+    def get_prevent_events(self):
+        if self.prevent_events is None:
+            self.set_prevent_events()
+        return self.prevent_events
+
     @staticmethod
     def vetor_state(state):
         """"Cria uma string com os valores do vetor de state"""
@@ -78,7 +107,7 @@ class Supervisor:
             code += f"{'*' * 50}\\ \n"
         return code
 
-    def create_import(self, bibliotecas=None):
+    def create_import(self):
         code = ""
         if self.language == "C":
             code += f"#include <wiringPi.h> \n\n"
@@ -120,8 +149,19 @@ class Supervisor:
             code += f"s_states[{len(self.supervisor_states)}] = {{" + self.vetor_state(self.supervisor_states) + "};\n"
         return code
 
+    def declare_prevent_state(self):
+        prevent_events = set()
+        for i in self.prevent_events:
+            prevent_events.add(i[1])
+        code = "// Eventos desabilitados pelo supervisor \n"
+        if self.prevent_events is None:
+            self.get_prevent_events()
+        for i in prevent_events:
+            code += f"bool D-EV{i[0]}; \n"
+        return code
+
     def declare_pin(self):
-        code = ""
+        code = "// Definição dos saida GPIO"
         j = 1
         for i in self.format_var():
             code += f"int {i}PIN = {j};\n"
@@ -138,6 +178,11 @@ class Supervisor:
                     code += f"      {var[i]} = digitalRead({var[i]}PIN); \n"
         return code
 
+    def prevent_events(self):
+        """Desabilitação dos Eventos Controláveis pelo supervisor"""
+        code = "// Desabilitação dos Eventos Controláveis pelo Supervisor\n"
+        # TODO, termina de escrever a função
+
     def update_state_nc(self, transitions, state_name):
         condition1 = 'if'
         condition2 = 'elif'
@@ -153,10 +198,10 @@ class Supervisor:
                     else:
                         code += f"      {condition2}({state_name}[{transitions[i][0]}] == "
                     code += f"1 and EV{transitions[i][1]} == HIGH){{\n" \
-                    f"          {state_name}[{transitions[i][0]}] = 0;\n" \
-                    f"          {state_name}[{transitions[i][2]}] = 1;\n" \
-                    f"          }}\n"
-                    j +=1
+                            f"          {state_name}[{transitions[i][0]}] = 0;\n" \
+                            f"          {state_name}[{transitions[i][2]}] = 1;\n" \
+                            f"          }}\n"
+                    j += 1
         return code
 
     def create_loop(self):
@@ -167,7 +212,7 @@ class Supervisor:
         return code
 
     def name(self):
-        return f'{self.plant_name}-{self.supervisor_name}'
+        return self.__str__()
 
     def __str__(self):
         return f'{self.plant_name}-{self.supervisor_name}'
@@ -202,13 +247,13 @@ class SupervisorLocalizado(Supervisor):
 
     def createcode_c(self):
         """ Chama a os métodos para a contrução do código"""
-
         # Declara o inicio do código
         code = self.create_header()
         code += self.create_import()
         code += self.declare_pin()
         code += self.declare_state()
         code += self.declared_var()
+        code += self.declare_prevent_state()
         code += self.start_function()
         code += self.setup_pin()
 
@@ -217,4 +262,5 @@ class SupervisorLocalizado(Supervisor):
         code += self.read_inputs()
         code += self.update_state_nc(self.plant_transitions, 'p_state')
         code += self.update_state_nc(self.supervisor_transitions, 's_state')
+        self.set_prevent_events()
         return str(code)
