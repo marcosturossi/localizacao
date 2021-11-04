@@ -3,12 +3,13 @@ from datetime import datetime
 
 class Supervisor:
     def __init__(self, language, **kwargs):
-        self.plant_name = kwargs['plant']['name']
-        self.supervisor_name = kwargs['supervisor']['name']
-        self.plant_transitions = kwargs['plant']['transitions']
-        self.supervisor_transitions = kwargs['supervisor']['transitions']
-        self.plant_marked = kwargs['plant']['marker']
-        self.supervisor_marked = kwargs['supervisor']['marker']
+        if kwargs:
+            self.plant_name = kwargs['plant']['name']
+            self.supervisor_name = kwargs['supervisor']['name']
+            self.plant_transitions = kwargs['plant']['transitions']
+            self.supervisor_transitions = kwargs['supervisor']['transitions']
+            self.plant_marked = kwargs['plant']['marker']
+            self.supervisor_marked = kwargs['supervisor']['marker']
         self.language = language
         self.plant_events = None
         self.supervisor_events = None
@@ -43,6 +44,7 @@ class Supervisor:
         return self.avalanche
 
     def check_choice_problem(self):
+        # TODO não implantando ainda
         """Verifica se existe o problema de escolha no supervisor"""
         for i in range(len(self.supervisor_transitions)):
             for j in range(1, len(self.supervisor_transitions)):
@@ -341,6 +343,17 @@ class Supervisor:
                "}"
         return code
 
+    def corret_avalanche(self):
+        code = ""
+        self.check_avalanche()
+        if self.avalanche is True:
+            code += self.update_state_nc(self.non_avalanche_list, 's_state')
+            code += self.update_state_nc(self.crescent_avalanche, 's_state')
+            code += self.update_state_nc(self.decrescent_avalanche, 's_state')
+        else:
+            code += self.update_state_nc(self.supervisor_transitions, 's_state')
+        return code
+
     def createcode_c(self):
         """ Chama a os métodos para a contrução do código"""
         # Declara o inicio do código
@@ -356,14 +369,8 @@ class Supervisor:
         code += self.declared_var()
         code += self.declare_prevent_state()
         code += self.read_inputs()
-        self.check_avalanche()
         code += self.update_state_nc(self.plant_transitions, 'p_state')
-        if self.avalanche is True:
-            code += self.update_state_nc(self.non_avalanche_list, 's_state')
-            code += self.update_state_nc(self.crescent_avalanche, 's_state')
-            code += self.update_state_nc(self.decrescent_avalanche, 's_state')
-        else:
-            code += self.update_state_nc(self.supervisor_transitions, 's_state')
+        code += self.corret_avalanche()
         code += self.format_prevent_events()
         code += self.generate_controlable_events()
         code += self.update_supervisor_states()
@@ -372,35 +379,11 @@ class Supervisor:
         return str(code)
 
     def name(self):
-        return self.__str__()
+        return 'Qualquer'
 
     def __str__(self):
-        return f'{self.plant_name}-{self.supervisor_name}'
+        if self.plant_name:
+            return f'{self.plant_name}-{self.supervisor_name}'
+        else:
+            return 'QUALQUERUM'
 
-
-class SupervisorLocalizado(Supervisor):
-
-    def non_plant_event(self):
-        """Encontra os eventos não controláveis devido a localização"""
-        eventos = set()
-        if self.plant_events is None and self.supervisor_events is None:
-            self.get_events()
-        for i in self.supervisor_events:
-            if i not in self.plant_events and int(i) % 2 != 0:
-                eventos.add(i)
-        return sorted(eventos)
-
-    def setup_pin(self):
-        """Set se os pinos sao entrada ou saida, de acordo com a localização"""
-        code = "\n\n"
-        if self.language == "C":
-            inp = "INPUT"
-            out = 'OUTPUT'
-            for i in sorted(self.all_events):
-                if int(i) % 2 == 0:
-                    code += f'    pinMode(EV{i}Pin, {inp}); \n'
-                elif int(i) % 2 != 0 and i in self.non_plant_event():
-                    code += f'    pinMode(EV{i}Pin, {out}); \n'
-                else:
-                    code += f'    pinMode(EV{i}Pin, {out}); \n'
-        return code

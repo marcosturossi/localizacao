@@ -5,7 +5,7 @@ from django.shortcuts import redirect
 
 from .forms import InputForm, AutomataFormset
 from .reader import clean_data
-from .localization.local import SupervisorLocalizado
+from .supervisors.localization import SupervisorLocalizado
 
 
 def file_request(request):
@@ -32,12 +32,10 @@ class Home(FormView):
         formset = context['formset']
         if formset.is_valid():
             formset = formset.cleaned_data
-            automata_list = []
             for i in formset:
-                data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
-                supervisor = SupervisorLocalizado(form.cleaned_data['linguagem'], **data_sup)
-                automata_list.append(supervisor)
+                supervisor = SupervisorLocalizado(form.cleaned_data['linguagem'])
+                supervisor.set_all_transitions(clean_data(i['planta']), clean_data(i['supervisor']))
             if form.cleaned_data['linguagem'] == 'C' and form.cleaned_data['arquitetura'] == 'L':
-                self.request.session['code'] = automata_list[0].createcode_c()
+                self.request.session['code'] = supervisor.createcode_c()
                 return redirect('base:file')
         return super().form_valid(form)
