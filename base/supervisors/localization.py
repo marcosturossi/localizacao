@@ -2,15 +2,6 @@ from .supervisor import Supervisor
 
 
 class SupervisorLocalizado(Supervisor):
-    def __init__(self, language, **kwargs):
-        super().__init__(language, **kwargs)
-        self.plant_transitions = []
-        self.supervisor_transitions = []
-
-    def set_all_transitions(self, plant_transitions, supervisor_transitions):
-        self.plant_transitions.append(plant_transitions)
-        self.supervisor_transitions.append(supervisor_transitions)
-
     def non_plant_event(self):
         """Encontra os eventos não controláveis devido a localização"""
         eventos = set()
@@ -39,6 +30,8 @@ class SupervisorLocalizado(Supervisor):
     def createcode_c(self):
         """ Chama a os métodos para a contrução do código"""
         # Declara o inicio do código
+        print(self.plants)
+        print(self.supervisors)
         code = self.create_header()
         code += self.create_import()
         code += self.declare_pin()

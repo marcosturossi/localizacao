@@ -2,14 +2,9 @@ from datetime import datetime
 
 
 class Supervisor:
-    def __init__(self, language, **kwargs):
-        if kwargs:
-            self.plant_name = kwargs['plant']['name']
-            self.supervisor_name = kwargs['supervisor']['name']
-            self.plant_transitions = kwargs['plant']['transitions']
-            self.supervisor_transitions = kwargs['supervisor']['transitions']
-            self.plant_marked = kwargs['plant']['marker']
-            self.supervisor_marked = kwargs['supervisor']['marker']
+    def __init__(self, language):
+        self.plants = []
+        self.supervisors = []
         self.language = language
         self.plant_events = None
         self.supervisor_events = None
@@ -25,6 +20,10 @@ class Supervisor:
         self.choice_problem_list = []
         self.crescent_avalanche = []
         self.decrescent_avalanche = []
+
+    def set_data(self, data):
+        self.plants.append(data['plant'])
+        self.supervisors.append(data['supervisor'])
 
     def check_avalanche(self):
         for i in range(len(self.supervisor_transitions)):
@@ -60,15 +59,20 @@ class Supervisor:
 
     def set_events(self):
         """Adiciona os eventos aos atributos"""
-        self.plant_events = set()
-        self.supervisor_events = set()
-        self.all_events = set()
-        for i in self.plant_transitions:
-            self.plant_events.add(i[1])
-            self.all_events.add(i[1])
-        for i in self.supervisor_transitions:
-            self.supervisor_events.add(i[1])
-            self.all_events.add(i[1])
+        self.plant_events = []
+        self.supervisor_events = []
+        self.all_events = []
+        for i in self.plants:
+            for j in i['transitions']:
+                self.plant_events.append(j[1])
+                self.all_events.append(j[1])
+        for i in self.supervisors:
+            for j in i['transitions']:
+                self.plant_events.append(j[1])
+                self.all_events.append(j[1])
+        set(self.plant_events)
+        set(self.supervisor_events)
+        set(self.all_events)
 
     def get_events(self):
         """Recupera os eventos"""
@@ -77,19 +81,25 @@ class Supervisor:
         return self.plant_events, self.supervisor_events
 
     def set_state(self):
-        self.plant_states = set()
-        self.supervisor_states = set()
-        self.all_states = set()
-        for i in self.plant_transitions:
-            self.plant_states.add(i[0])
-            self.plant_states.add(i[2])
-            self.all_states.add(i[0])
-            self.all_states.add(i[1])
-        for i in self.supervisor_transitions:
-            self.supervisor_states.add(i[0])
-            self.supervisor_states.add(i[2])
-            self.all_states.add(i[0])
-            self.all_states.add(i[1])
+        self.plant_states = {}
+        self.supervisor_states = {}
+        self.all_states = {}
+        for i in self.plants:
+            state = set()
+            for j in i['transitions']:
+                state.add(j[0])
+                state.add(j[2])
+                state.add(j[0])
+                state.add(j[1])
+            self.plant_states[i['name']] = state
+        for i in self.supervisors:
+            state = set()
+            for j in i['transitions']:
+                state.add(j[0])
+                state.add(j[2])
+                state.add(j[0])
+                state.add(j[1])
+            self.plant_states[i['name']] = state
 
     def get_states(self):
         if self.plant_states is None and self.supervisor_states is None:
@@ -97,26 +107,34 @@ class Supervisor:
         return self.plant_states, self.supervisor_states
 
     def set_prevent_events(self):
-        controlable_states = []
-        all_possibility = []
-        supervisor_transitions = []
-        prevent_event = []
-        for i in self.supervisor_transitions:
-            if int(i[1]) % 2 != 0:
-                supervisor_transitions.append([i[0], i[1]])
+        all_possibility = {}
+        controlable_transitions = {}
+        prevent_event = {}
 
-        for i in self.supervisor_events:
-            if int(i) % 2 != 0:
-                controlable_states.append(i)
+        for i in self.supervisors:
+            controlable = []
+            for j in i['transitions']:
+                if int(j[1]) % 2 != 0:
+                    controlable.append([j[0], j[1]])
+            controlable_transitions[i['name']] = controlable_transitions
 
         # Cria todas as possibilidades
-        for i in self.supervisor_states:
-            for j in controlable_states:
-                all_possibility.append([i, j])
+        for i in controlable_transitions:
+            for j in self.supervisor_states:
+                all_list = []
+                if i['name'] == j['name']:
+                    for h in i['transitions']:
+                        all_list.append([j[0], h])
+                all_possibility[i['name']] = all_list
 
         for i in all_possibility:
-            if i not in supervisor_transitions:
-                prevent_event.append(i)
+            for j in controlable_transitions:
+                prevent_event_list = []
+                if i['name'] == j['name']:
+                    if i not in j:
+                        prevent_event_list.append(i)
+                prevent_event[i['name']] = prevent_event_list
+
         self.prevent_events = prevent_event
 
     def get_prevent_events(self):
@@ -143,7 +161,7 @@ class Supervisor:
             code = f"/{'*' * 50} \n"
             code += f"Data: {datetime.now().strftime('%d/%m/%Y, %H:%M:%S')} \n" \
                     f"Universidade do Estado de Santa Catarina \n" \
-                    f"{self.name()}\n"
+                    f"{'Anonymous'}\n" # TODO Arrumar isto
             code += f"{'*' * 50}\\ \n"
         return code
 
@@ -312,7 +330,7 @@ class Supervisor:
             inp = 'INPUT'
             out = 'OUTPUT'
             for i in sorted(self.all_events):
-                if i % 2 == 0:
+                if int(i) % 2 == 0:
                     code += f'      pinMode(EV{i}Pin, {inp}); \n'
                 else:
                     code += f'      pinMode(EV{i}Pin, {out}); \n'
@@ -369,7 +387,7 @@ class Supervisor:
         code += self.declared_var()
         code += self.declare_prevent_state()
         code += self.read_inputs()
-        code += self.update_state_nc(self.plant_transitions, 'p_state')
+        code += self.update_state_nc(self.plants, 'p_state')
         code += self.corret_avalanche()
         code += self.format_prevent_events()
         code += self.generate_controlable_events()
@@ -378,12 +396,4 @@ class Supervisor:
         code += self.close_program()
         return str(code)
 
-    def name(self):
-        return 'Qualquer'
-
-    def __str__(self):
-        if self.plant_name:
-            return f'{self.plant_name}-{self.supervisor_name}'
-        else:
-            return 'QUALQUERUM'
 
