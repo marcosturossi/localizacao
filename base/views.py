@@ -7,6 +7,7 @@ from .forms import InputForm, AutomataFormset
 from .reader import clean_data
 from .supervisors.localization import SupervisorLocalizado
 from .supervisors.supervisor import Supervisor
+from .language.c import C
 
 
 
@@ -34,7 +35,7 @@ class Home(FormView):
         formset = context['formset']
         if formset.is_valid():
             formset = formset.cleaned_data
-            supervisor = Supervisor(form.cleaned_data['linguagem'])
+            supervisor = Supervisor(C())
             for i in formset:
                 data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
                 supervisor.set_data(data_sup)

@@ -13,18 +13,15 @@ architecture = (
 
 
 class InputForm(forms.Form):
-    linguagem = forms.ChoiceField(choices=LANGUAGE,
-                                  widget=forms.Select(attrs={'class': 'form-select form-select-sm'}))
-    arquitetura = forms.ChoiceField(choices=architecture,
-                                    widget=forms.Select(attrs={'class': 'form-select form-select-sm'}))
+    linguagem = forms.ChoiceField(choices=LANGUAGE)
+    arquitetura = forms.ChoiceField(choices=architecture)
 
 
 class AutomataForm(forms.Form):
-    planta = forms.FileField(widget=forms.FileInput(attrs={'class': 'form-control-file'}))
-    supervisor = forms.FileField(widget=forms.FileInput(attrs={'class': 'form-control-file'}))
+    planta = forms.FileField()
+    supervisor = forms.FileField()
     eventos_controlaveis = forms.CharField(required=False, label='Eventos Controlávels',
-                                           widget=forms.TextInput(attrs={'class': 'form-control form-control-sm',
-                                                                         'placeholder': 'exemplo - e1,e3,e5...'}))
+                                           widget=forms.TextInput(attrs={'placeholder': 'exemplo - e1,e3,e5...'}))
 
 
 AutomataFormset = formset_factory(AutomataForm)
