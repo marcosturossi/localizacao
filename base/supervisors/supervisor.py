@@ -104,7 +104,7 @@ class Supervisor:
             non_controlable = []
             controlable = []
             for j in i['transitions']:
-                if j[1] % 2 == 0:
+                if int(j[1]) % 2 == 0:
                     non_controlable.append(j)
                 else:
                     controlable.append(j)
@@ -154,12 +154,18 @@ class Supervisor:
                                 all_list.append([g[0], h[1]])
                     all_possibility[k] = all_list
 
+        # Retira o ultimo elemento de todos os eventos
+        controlable = self.controlable
+        for i in controlable:
+            for j in controlable[i]:
+                j.pop(2)
+
         for i in all_possibility:
-            for j in self.controlable:
+            for j in controlable:
                 prevent_event_list = []
                 if i == j:
                     for h in all_possibility[i]:
-                        if h not in self.controlable[j]:
+                        if h not in controlable[j]:
                             prevent_event_list.append(h)
                     prevent_event[i] = prevent_event_list
         self.prevent_events = prevent_event
