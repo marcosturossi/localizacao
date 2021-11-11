@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+  <h1 align="center" style="font-size:30px">Supervisory Control Translator</h1>
+  <p><strong>Instruções:</strong></p>
+  <p>Somente é aceito arquivos .ADS</p>
+  <p>Verificar se o numerador dos estados inicia em zero.</p>
+  <p>Ainda não é possível utilizar a rotina de localização por eventos, somente localização para PLANTA</p>
+  <p><strong>contato: </strong>marcosturossi@gmail.com
+  <p>
+  <div class="row">
+    <div class="col-6">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row">
+          {% for foo in form%}
+          <div class="input-field col s12 m6">
+            <div>
+              <label>{{foo.label}}</label>
+            </div>
+            <div>
+              {{foo}}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="row" id="before_form">
+          {{ formset.management_form }}
+          {% for form_a in formset %}
+          <div class="col s12 m6" id="form-container">
+            {{ form_a.as_p }}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col s3 offset-s9">
+            <button class="btn-floating waves-effect waves-light black" type="button" id="remove-form">
+              <i class="material-icons right">remove</i>
+            </button>
+            <button class="btn-floating waves-effect waves-light deep-orange" type="button" id="add-form">
+              <i class="material-icons right">add</i>
+            </button>
+            <button class="btn waves-effect waves-light grey" type="submit">Enviar
+              <i class="material-icons right">send</i>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/app.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var options = ""
+        var elems = document.querySelectorAll('select');
+        var instances = M.FormSelect.init(elems, options);
+    });
+</script>
+
+
+{%endblock%}
