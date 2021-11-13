@@ -105,9 +105,9 @@ class Supervisor:
             controlable = []
             for j in i['transitions']:
                 if int(j[1]) % 2 == 0:
-                    non_controlable.append(j)
+                    non_controlable.append(j.copy())
                 else:
-                    controlable.append(j)
+                    controlable.append(j.copy())
             self.non_controlable[i['name']] = non_controlable
             self.controlable[i['name']] = controlable
 
@@ -155,10 +155,12 @@ class Supervisor:
                     all_possibility[k] = all_list
 
         # Retira o ultimo elemento de todos os eventos
-        controlable = self.controlable
-        for i in controlable:
-            for j in controlable[i]:
-                j.pop(2)
+        controlable = {}
+        for i in self.controlable:
+            controlable_list = []
+            for j in self.controlable[i]:
+                controlable_list.append([j[0], j[1]])
+            controlable[i] = controlable_list
 
         for i in all_possibility:
             for j in controlable:
@@ -203,7 +205,22 @@ class Supervisor:
         var = self.format_var()
         code = ""
         for i in var:
-            code += self.lang.o_declare_var('bool', i, 0, 2)
+            code += self.lang.o_declare_var('bool', i, 0, 1)
+        return code
+
+    def declare_last_state(self):
+        """Declara as para armazenar os ultimo estado dos eventos não controláveis"""
+        code = ""
+        non_controlable = set()
+        if self.non_controlable == {}:
+            self.set_transitions()
+        for i in self.non_controlable:
+            for j in self.non_controlable[i]:
+                non_controlable.add(j[1])
+        for i in non_controlable:
+            code += self.lang.o_declare_var('bool', f"LS_EV{i}", 0, 1)
+        for i in non_controlable:
+            code += self.lang.o_declare_var('bool', f"IN{i}", 0, 1)
         return code
 
     def declare_state(self):
@@ -223,11 +240,11 @@ class Supervisor:
         for i in self.prevent_events.values():
             for j in i:
                 prevent_events.add(j[1])
-        code = "        // Eventos desabilitados pelo supervisor \n"
+        code = "    // Eventos desabilitados pelo supervisor \n"
         if self.prevent_events is None:
             self.get_prevent_events()
         for i in prevent_events:
-            code += self.lang.o_declare_var('bool', f'D_EV{i}', 0, ident=2)
+            code += self.lang.o_declare_var('bool', f'D_EV{i}', 0, 1)
         code += "\n"
         return code
 
@@ -245,7 +262,7 @@ class Supervisor:
         var = self.format_var()
         for i in range(len(sorted(self.all_events))):
             if int(var[i][-1]) % 2 == 0:
-                code += self.lang.o_call_function('digitalRead', [f"{var[i]}PIN"], var[i], 2)
+                code += self.lang.o_call_function('digitalRead', [f"{var[i]}PIN"], f"IN{var[i][-1]}", 2)
         return code
 
     def format_prevent_events(self):
@@ -285,6 +302,19 @@ class Supervisor:
                         code += self.lang.o_if(op1, condiction, action, 2)
         return code
 
+    def generate_noncontrolable_events(self):
+        code = ""
+        non_controlable = set()
+        for i in self.non_controlable:
+            for j in self.non_controlable[i]:
+                non_controlable.add(j[1])
+        for i in non_controlable:
+            condition = f"IN{i} != LS_EV{i} && IN{i} == HIGH"
+            action_if = f'EV{i} == 1;\n            LS_EV{i} == EV{i}'
+            action_else = f'EV{i} == 0'
+            code += self.lang.o_if_else(condition, action_if, action_else, 2)
+        return code
+
     def generate_controlable_events(self):
         op1 = 'if'
         code = "\n        // Geração dos eventos Controláveis e atualização dos estados da planta\n"
@@ -301,7 +331,7 @@ class Supervisor:
 
     def set_pin(self):
         """São Criado os Pinos de entrada e Saida"""
-        code = "// Declara os GPIO Pin\n"
+        code = "    // Declara os GPIO Pin\n"
         inp = 'INPUT'
         out = 'OUTPUT'
         for i in sorted(self.all_events):
@@ -334,11 +364,13 @@ class Supervisor:
         code_in_main = self.declare_pin()
         code_in_main += self.declare_state()
         code_in_main += self.set_pin()
+        code_in_main += self.declared_var()
+        code_in_main += self.declare_last_state()
 
         # Inicia a lógica de Controle
-        code_in_loop = self.declared_var()
-        code_in_loop += self.declare_prevent_state()
+        code_in_loop = self.declare_prevent_state()
         code_in_loop += self.read_inputs()
+        code_in_loop += self.generate_noncontrolable_events()
         code_in_loop += self.update_state(self.plants)
         code_in_loop += self.update_state(self.supervisors)
         code_in_loop += self.format_prevent_events()
