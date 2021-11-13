@@ -20,7 +20,7 @@ class C:
     def o_import(self, biblioteca):
         return f"#include<{biblioteca}>{self.new_line}"
 
-    def o_loop(self, condition, action, ident=0):
+    def o_loop(self, action, condition, ident=0):
         return f"{self.ident * ident}{self.owhile}({condition}){{{self.new_line}" \
                f"{self.ident * ident}{action}{self.new_line}" \
                f"{self.ident * ident}}}{self.new_line}"

@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from base.language.c import C, Arduino
 
 class Supervisor:
     def __init__(self, language):
@@ -352,7 +352,7 @@ class Supervisor:
         return code
 
     def create_loop(self, action):
-        code = self.lang.o_loop(1, action, 1)
+        code = self.lang.o_loop(action, 1, 1)
         return code
 
     def createcode_c(self):
@@ -377,6 +377,11 @@ class Supervisor:
         code_in_loop += self.generate_controlable_events()
         code_in_loop += self.update_state(self.supervisors, controlable=True)
         code_in_loop += self.write_outputs()
-        code_in_main += self.create_loop(code_in_loop)
-        code += self.start_function(code_in_main)
+        if self.lang.__class__ == C:
+            code_in_main += self.create_loop(code_in_loop)
+            code += self.start_function(code_in_main)
+        elif self.lang.__class__ == Arduino:
+            code += self.start_function(code_in_main)
+            code += self.create_loop(code_in_loop)
+            print(self.create_loop(code_in_loop))
         return str(code)

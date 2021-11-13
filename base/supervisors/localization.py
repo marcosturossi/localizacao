@@ -12,9 +12,6 @@ class SupervisorLocalizado(Supervisor):
                 eventos.add(i)
         return sorted(eventos)
 
-    def set_prevent_events(self):
-        pass
-
     def set_events(self):
         # TODO criar self.controlable_events... etc
         # TODO refatorar os valores

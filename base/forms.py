@@ -3,7 +3,8 @@ from django.forms import formset_factory
 
 LANGUAGE = (
     ('C', 'C'),
-    ('P', 'Python')
+    ('A', 'Arduino'),
+    ('P', 'Python'),
 )
 
 architecture = (
