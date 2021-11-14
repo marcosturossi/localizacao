@@ -24,22 +24,24 @@ class Supervisor:
         self.supervisors[data['supervisor']['name']] = data['supervisor']
 
     def check_avalanche(self, data):
-        supervisor_transitions = data
         avalanche_list = []
         avalanche = False
-        for i in range(len(supervisor_transitions)):
-            for j in range(1, len(supervisor_transitions)):
-                if supervisor_transitions[i][1] == supervisor_transitions[j][1] and i != j:
-                    if supervisor_transitions[i][2] == supervisor_transitions[j][0]:
-                        avalanche_list.append(supervisor_transitions[i])
-                        avalanche_list.append(supervisor_transitions[j])
-                        avalanche = True
-        for i in avalanche_list:
-            if avalanche_list.count(i) > 1:
-                avalanche_list.remove(i)
-        if avalanche is True:
-            self.avalanche[data['name']] = avalanche_list
-            self.split_avalanche(data['name'])
+        for key, values in data.items():
+            print(key)
+            print(values)
+            for i in range(len(values)):
+                for j in range(1, len(values)):
+                    if values[i][1] == values[j][1] and i != j:
+                        if values[i][2] == values[j][0]:
+                            avalanche_list.append(values[i])
+                            avalanche_list.append(values[j])
+                            avalanche = True
+            for i in avalanche_list:
+                if avalanche_list.count(i) > 1:
+                    avalanche_list.remove(i)
+            if avalanche is True:
+                self.avalanche[key] = avalanche_list
+                self.split_avalanche(key)
         return avalanche
 
     def split_avalanche(self, name):
@@ -291,13 +293,12 @@ class Supervisor:
             return code
 
     def update_state(self, transitions):
-        print(transitions)
         op1 = 'if'
         """Atualização dos modelos da planta e do supervisor de acordo com os eventos não controláveis"""
         code = f"\n        //Atualiza os estados\n"
         avanlanche = self.check_avalanche(transitions)
         if avanlanche is True:
-            transitions = self.new_transitions.items()
+            transitions = self.new_transitions
         for key, values in transitions.items():
             for i in values:
                 condiction = f"{self.lang.o_array_name(key, i[0])} == 1 {self.lang.oand} EV{i[1]} == HIGH"
@@ -333,7 +334,6 @@ class Supervisor:
                               F"EV{j[1]}": 1}
                     code += self.lang.o_if(op1, condiction, action, 2)
             return code
-
 
     def set_pin(self):
         """São Criado os Pinos de entrada e Saida"""
@@ -381,10 +381,10 @@ class Supervisor:
         code_in_loop += self.read_inputs()
         code_in_loop += self.generate_noncontrolable_events()
         code_in_loop += self.update_plant_state()
-        code_in_loop += self.update_state(self.non_controlable)  # self.non_controlable
+        code_in_loop += self.update_state(self.non_controlable)
         code_in_loop += self.format_prevent_events()
         code_in_loop += self.generate_controlable_events()
-        code_in_loop += self.update_state(self.controlable)  # self.controlable
+        code_in_loop += self.update_state(self.controlable)
         code_in_loop += self.write_outputs()
         if self.lang.__class__ == C:
             code_in_main += self.create_loop(code_in_loop)

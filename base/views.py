@@ -34,10 +34,20 @@ class Home(FormView):
         formset = context['formset']
         if formset.is_valid():
             formset = formset.cleaned_data
-            supervisor = SupervisorLocalizado(Arduino())
-            for i in formset:
-                data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
-                supervisor.set_data(data_sup)
-            self.request.session['code'] = supervisor.createcode_c()
+            if form.cleaned_data['arquitetura'] == "ML":
+                if form.cleaned_data['linguagem'] == "C":
+                    supervisor = Supervisor(C())
+                else:
+                    supervisor = Supervisor(Arduino())
+                for i in formset:
+                    data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
+                    supervisor.set_data(data_sup)
+                self.request.session['code'] = supervisor.createcode_c()
+            else:
+                if form.cleaned_data['linguagem'] == "C":
+                    supervisor = SupervisorLocalizado(C())
+                else:
+                    supervisor = SupervisorLocalizado(Arduino())
+                pass # TODO, falta implantar a modularização com diversos arquivos
             return redirect('base:file')
         return super().form_valid(form)
