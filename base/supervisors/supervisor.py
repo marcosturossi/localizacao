@@ -1,6 +1,7 @@
 from datetime import datetime
 from base.language.c import C, Arduino
 
+
 class Supervisor:
     def __init__(self, language):
         self.plants = {}
@@ -23,7 +24,7 @@ class Supervisor:
         self.supervisors[data['supervisor']['name']] = data['supervisor']
 
     def check_avalanche(self, data):
-        supervisor_transitions = data['transitions']
+        supervisor_transitions = data
         avalanche_list = []
         avalanche = False
         for i in range(len(supervisor_transitions)):
@@ -56,7 +57,7 @@ class Supervisor:
         for i in self.supervisors.values():
             if i['name'] == name:
                 for j in i['transitions']:
-                    if j not in crescent and j not in decrescent and j[0] !=j[2]:
+                    if j not in crescent and j not in decrescent and j[0] != j[2]:
                         non_avalanche.append(j)
         for i in crescent:
             new_transitions.append(i)
@@ -92,7 +93,7 @@ class Supervisor:
                 self.all_events.append(j[1])
         for i in self.supervisors.values():
             for j in i['transitions']:
-                self.plant_events.append(j[1])
+                self.supervisor_events.append(j[1])
                 self.all_events.append(j[1])
         self.plant_events = set(self.plant_events)
         self.supervisor_events = set(self.supervisor_events)
@@ -276,30 +277,33 @@ class Supervisor:
                 code += self.lang.o_if(op1, condiction, action, 2)
         return code
 
-    def update_state(self, transitions, controlable=False):
+    def update_plant_state(self):
         op1 = 'if'
-        if controlable:
-            op_controlable = "int(i[1]) % 2 != 0"
-        else:
-            op_controlable = "int(i[1]) % 2 == 0"
+        code = "\n        // Atualização dos Estados da planta pelos eventos não controláveis\n"
+        for i in self.plants.values():
+            for j in i['transitions']:
+                if int(j[1]) % 2 == 0:
+                    condiction = f"{self.lang.o_array_name(i['name'], j[0])} == 1 {self.lang.oand} " \
+                                 f"D_EV{j[1]} == 0"
+                    action = {f"{self.lang.o_array_name(i['name'], j[0])}": 0,
+                              f"{self.lang.o_array_name(i['name'], j[2])}": 1}
+                    code += self.lang.o_if(op1, condiction, action, 2)
+            return code
+
+    def update_state(self, transitions):
+        print(transitions)
+        op1 = 'if'
         """Atualização dos modelos da planta e do supervisor de acordo com os eventos não controláveis"""
-        code = f"\n        //Atualiza os estados dos eventos não controláveis da\n"
-        for data in transitions.values():
-            avanlanche = self.check_avalanche(data)
-            if avanlanche is True:
-                for key, value in self.new_transitions.items():
-                    for i in value:
-                        if eval(op_controlable):
-                            condition = f"{self.lang.o_array_name(key, i[0])} == 1 {self.lang.oand} EV{i[1]} == HIGH"
-                            action = {f'{self.lang.o_array_name(key, i[0])}': 0, f'{self.lang.o_array_name(key, i[2])}': 1}
-                            code += self.lang.o_if(op1, condition, action, 2)
-            else:
-                for i in data['transitions']:
-                    if eval(op_controlable):
-                        condiction = f"{self.lang.o_array_name(data['name'], i[0])} == 1 {self.lang.oand} EV{i[1]} == HIGH"
-                        action = {f"{self.lang.o_array_name(data['name'], i[0])}": 0,
-                                  f"{self.lang.o_array_name(data['name'], i[2])}": 1}
-                        code += self.lang.o_if(op1, condiction, action, 2)
+        code = f"\n        //Atualiza os estados\n"
+        avanlanche = self.check_avalanche(transitions)
+        if avanlanche is True:
+            transitions = self.new_transitions.items()
+        for key, values in transitions.items():
+            for i in values:
+                condiction = f"{self.lang.o_array_name(key, i[0])} == 1 {self.lang.oand} EV{i[1]} == HIGH"
+                action = {f"{self.lang.o_array_name(key, i[0])}": 0,
+                          f"{self.lang.o_array_name(key, i[2])}": 1}
+                code += self.lang.o_if(op1, condiction, action, 2)
         return code
 
     def generate_noncontrolable_events(self):
@@ -315,6 +319,7 @@ class Supervisor:
             code += self.lang.o_if_else(condition, action_if, action_else, 2)
         return code
 
+
     def generate_controlable_events(self):
         op1 = 'if'
         code = "\n        // Geração dos eventos Controláveis e atualização dos estados da planta\n"
@@ -329,6 +334,7 @@ class Supervisor:
                     code += self.lang.o_if(op1, condiction, action, 2)
             return code
 
+
     def set_pin(self):
         """São Criado os Pinos de entrada e Saida"""
         code = "    // Declara os GPIO Pin\n"
@@ -341,9 +347,10 @@ class Supervisor:
                 code += self.lang.o_call_function('pinMode', [f"EV{i}PIN", out], ident=1)
         return code
 
+
     def write_outputs(self):
         code = "        // Escreve os eventos na saida\n"
-        for i in self.all_events:
+        for i in self.plant_events:
             if int(i) % 2 != 0:
                 condition = f"EV{i} == 1"
                 action_if = f"EV{i}PIN = HIGH"
@@ -351,9 +358,11 @@ class Supervisor:
                 code += self.lang.o_if_else(condition, action_if, action_else, 2)
         return code
 
+
     def create_loop(self, action):
         code = self.lang.o_loop(action, 1, 1)
         return code
+
 
     def createcode_c(self):
         """ Chama a os métodos para a contrução do código"""
@@ -371,11 +380,11 @@ class Supervisor:
         code_in_loop = self.declare_prevent_state()
         code_in_loop += self.read_inputs()
         code_in_loop += self.generate_noncontrolable_events()
-        code_in_loop += self.update_state(self.plants)
-        code_in_loop += self.update_state(self.supervisors)
+        code_in_loop += self.update_plant_state()
+        code_in_loop += self.update_state(self.non_controlable)  # self.non_controlable
         code_in_loop += self.format_prevent_events()
         code_in_loop += self.generate_controlable_events()
-        code_in_loop += self.update_state(self.supervisors, controlable=True)
+        code_in_loop += self.update_state(self.controlable)  # self.controlable
         code_in_loop += self.write_outputs()
         if self.lang.__class__ == C:
             code_in_main += self.create_loop(code_in_loop)
@@ -383,5 +392,4 @@ class Supervisor:
         elif self.lang.__class__ == Arduino:
             code += self.start_function(code_in_main)
             code += self.create_loop(code_in_loop)
-            print(self.create_loop(code_in_loop))
         return str(code)

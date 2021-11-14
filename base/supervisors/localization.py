@@ -2,20 +2,30 @@ from .supervisor import Supervisor
 
 
 class SupervisorLocalizado(Supervisor):
+
     def non_plant_event(self):
         """Encontra os eventos não controláveis devido a localização"""
         eventos = set()
-        if self.plant_events is None and self.supervisor_events is None:
+        if self.supervisor_events is set():
             self.get_events()
         for i in self.supervisor_events:
-            if i not in self.plant_events and int(i) % 2 != 0:
+            if i not in self.plant_events:
                 eventos.add(i)
-        return sorted(eventos)
+        return eventos
 
-    def set_events(self):
-        # TODO criar self.controlable_events... etc
-        # TODO refatorar os valores
-        pass
+    def set_transitions(self):
+        super().set_transitions()
+        non_plant_events = self.non_plant_event()
+        k = []
+        for i in self.controlable:
+            for j in self.controlable[i]:
+                if j[1] in non_plant_events:
+                    k.append(j)
+        for i in self.controlable:
+            for n in k:
+                if n in self.controlable[i]:
+                    self.controlable[i].remove(n)
+            self.non_controlable[i] += k
 
     def set_pin(self):
         """Set se os pinos sao entrada ou saida, de acordo com a localização"""

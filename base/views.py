@@ -10,7 +10,6 @@ from .supervisors.supervisor import Supervisor
 from .language.c import C, Arduino
 
 
-
 def file_request(request):
     response = HttpResponse(request.session['code'], content_type='application/text charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="foo.txt"'
@@ -35,7 +34,7 @@ class Home(FormView):
         formset = context['formset']
         if formset.is_valid():
             formset = formset.cleaned_data
-            supervisor = Supervisor(Arduino())
+            supervisor = SupervisorLocalizado(Arduino())
             for i in formset:
                 data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
                 supervisor.set_data(data_sup)
