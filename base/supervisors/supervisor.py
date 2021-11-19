@@ -1,9 +1,10 @@
 
 class Automato:
-    def __init__(self, transitions):
-        self.name = transitions['name']
-        self.transitions = transitions
-        self.events = set()
+    def __init__(self, data):
+        self.name = data['name']
+        self.transitions = data['transitions']
+        self.events = set()  # Set de Eventos
+        self.states = set()  # Set de Estados
         self.non_controlable = []  # Transições Não Controláveis
         self.controlable = []  # Transições Controláveis
         self.named_events = {}  # Organiza os Eventos em nomes
@@ -11,6 +12,11 @@ class Automato:
     def set_events(self):
         for i in self.transitions:
             self.events.add(i[1])
+
+    def set_states(self):
+        for i in self.transitions:
+            self.states.add(i[0])
+            self.states.add(i[2])
 
     def set_named_events(self):
         for i in self.events:
@@ -29,17 +35,78 @@ class Plant(Automato):
 
 
 class Supervisor(Automato):
-    def __init__(self, transitions):
-        super().__init__(transitions)
+    def __init__(self, data):
+        super().__init__(data)
         self.avalanche = None
-        self.avalanche = []
+        self.avalanche_solved = False
+        self.avalanche_list = []
         self.prevent_events = []
+        self.choice_problem = None
+
+    def _get_all_possibility(self):
+        """Função que cria todas as possobilidades de saida de eventos
+        auxilia verificação de eventos impedidos pelo supervisor"""
+        all_possibility = []
+        for i in self.states:
+            for j in self.events:
+                if int(j) % 2 != 0:
+                    all_possibility.append([i, j])
+        return all_possibility
+
+    def _clone_copy_transistions(self):
+        """Nova lista de transições com apenas o estado de saida
+        e o evento"""
+        new_transitions = []
+        for i in self.controlable:
+            new_transitions.append([i[0], [1]])
+        return new_transitions
 
     def get_prevent_events(self):
-        pass
+        controlable = self._clone_copy_transistions()
+        for i in self._get_all_possibility():
+            if i not in controlable:
+                self.prevent_events.append(i)
+
+    def _clean_avalalanche_list(self):
+        for i in self.avalanche_list:
+            if self.avalanche_list.count(i) > 1:
+                self.avalanche_list.remove(i)
+
+    def _solve_avalanche_list(self):
+        crescent = []
+        decrescent = []
+        non_avalanche = []
+        for i in self.avalanche_list:
+            if int(i[0]) > int(i[2]):
+                crescent.append(i)
+            else:
+                decrescent.append(i)
+        crescent = sorted(crescent, reverse=True)
+        decrescent = sorted(decrescent)
+        for i in self.transitions:
+            if i not in crescent and i not in decrescent:
+                non_avalanche.append(i)
+        self.avalanche_list = []
+        for i in crescent:
+            self.avalanche_list.append(i)
+        for i in decrescent:
+            self.avalanche_list.append(i)
+        for i in non_avalanche:
+            self.avalanche_list.append(i)
 
     def check_avalanche(self):
-        pass
+        trans = self.transitions
+        for i in range(len(trans)):
+            for j in range(1, len(trans)):
+                if trans[i][1] == trans[j][1] and i != j:
+                    if trans[i][2] == trans[j][0]:
+                        self.avalanche_list.append(trans[i])
+                        self.avalanche_list.append(trans[j])
+                        self.avalanche = True
+        if self.avalanche:
+            self._clean_avalalanche_list()
+            self._solve_avalanche_list()
+            self.avalanche_solved = True
 
     def check_choice_problem(self):
         pass
