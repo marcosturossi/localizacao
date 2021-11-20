@@ -5,7 +5,8 @@ from django.shortcuts import redirect
 from .forms import InputForm, AutomataFormset
 from .reader import clean_data
 from .supervisors.localization import SupervisorLocalizado
-from .supervisors.supervisor import Supervisor
+from .supervisors.supervisor import Supervisor, Plant
+from .supervisors.modular_local import ModularLocal
 from .language.c import C, Arduino
 
 
@@ -35,13 +36,16 @@ class Home(FormView):
             formset = formset.cleaned_data
             if form.cleaned_data['arquitetura'] == "ML":
                 if form.cleaned_data['linguagem'] == "C":
-                    supervisor = Supervisor(C())
+                    sup = ModularLocal(C())
                 else:
-                    supervisor = Supervisor(Arduino())
+                    sup = ModularLocal(Arduino())
                 for i in formset:
-                    data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
-                    supervisor.set_data(data_sup)
-                self.request.session['code'] = supervisor.createcode_c()
+                    planta = clean_data(i['planta'])
+                    supervisor = clean_data(i['supervisor'])
+                    p, s = Plant(planta), Supervisor(supervisor)
+                    sup.set_data(p)
+                    sup.set_data(s)
+                self.request.session['code'] = sup.createcode()
             else:
                 self.request.session['code'] = ""
                 for i in formset:
@@ -51,6 +55,6 @@ class Home(FormView):
                     else:
                         supervisor = SupervisorLocalizado(Arduino())
                     supervisor.set_data(data_sup)
-                    self.request.session['code'] += supervisor.createcode_c()
+                    self.request.session['code'] += supervisor.createcode()
             return redirect('base:file')
         return super().form_valid(form)

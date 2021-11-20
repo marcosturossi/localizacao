@@ -19,15 +19,48 @@ class Automato:
             self.states.add(i[2])
 
     def set_named_events(self):
+        if not self.events:
+            self.set_events()
         for i in self.events:
-            self.named_events[i](f"EV{i}")
+            self.named_events[str(i)] = f"EV{i}"
 
-    def split_transitions(self):
+    def _split_transitions(self):
         for i in self.transitions:
             if int(i[1]) % 2 == 0:
                 self.non_controlable.append(i)
             else:
                 self.controlable.append(i)
+
+    def get_name(self):
+        return self.name
+
+    def get_transitions(self):
+        return self.transitions
+
+    def get_controlable(self):
+        if not self.controlable:
+            self._split_transitions()
+        return self.controlable
+
+    def get_non_controlable(self):
+        if not self.non_controlable:
+            self._split_transitions()
+        return self.non_controlable
+
+    def get_events(self):
+        if not self.events:
+            self.set_events()
+        return self.events
+
+    def get_states(self):
+        if not self.states:
+            self.set_states()
+        return self.states
+
+    def get_named_events(self):
+        if not self.named_events:
+            self.set_named_events()
+        return self.named_events
 
 
 class Plant(Automato):
@@ -47,8 +80,10 @@ class Supervisor(Automato):
         """Função que cria todas as possobilidades de saida de eventos
         auxilia verificação de eventos impedidos pelo supervisor"""
         all_possibility = []
-        for i in self.states:
-            for j in self.events:
+        states = self.get_states()
+        events = self.get_events()
+        for i in states:
+            for j in events:
                 if int(j) % 2 != 0:
                     all_possibility.append([i, j])
         return all_possibility
@@ -57,15 +92,21 @@ class Supervisor(Automato):
         """Nova lista de transições com apenas o estado de saida
         e o evento"""
         new_transitions = []
-        for i in self.controlable:
+        controlable = self.get_controlable()
+        for i in controlable:
             new_transitions.append([i[0], [1]])
         return new_transitions
 
-    def get_prevent_events(self):
+    def set_prevent_events(self):
         controlable = self._clone_copy_transistions()
         for i in self._get_all_possibility():
             if i not in controlable:
                 self.prevent_events.append(i)
+
+    def get_prevent_events(self):
+        if not self.prevent_events:
+            self.set_prevent_events()
+        return self.prevent_events
 
     def _clean_avalalanche_list(self):
         for i in self.avalanche_list:
@@ -95,7 +136,7 @@ class Supervisor(Automato):
             self.avalanche_list.append(i)
 
     def check_avalanche(self):
-        trans = self.transitions
+        trans = self.get_transitions()
         for i in range(len(trans)):
             for j in range(1, len(trans)):
                 if trans[i][1] == trans[j][1] and i != j:
