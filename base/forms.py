@@ -7,22 +7,26 @@ LANGUAGE = (
     ('P', 'Python'),
 )
 
-architecture = (
-    ('L', 'Localizacao'),
-    ('ML', 'Modular Local')
+ORIGEM = (
+    ('P', 'Planta'),
+    ('S', 'Supervisor'),
 )
 
 
 class InputForm(forms.Form):
-    linguagem = forms.ChoiceField(choices=LANGUAGE)
-    arquitetura = forms.ChoiceField(choices=architecture)
+    linguagem = forms.ChoiceField(choices=LANGUAGE, widget=forms.Select(attrs={'class': 'form-select form-select-sm'}))
 
 
-class AutomataForm(forms.Form):
-    planta = forms.FileField()
-    supervisor = forms.FileField()
-    eventos_controlaveis = forms.CharField(required=False, label='Eventos Controlávels',
-                                           widget=forms.TextInput(attrs={'placeholder': 'exemplo - e1,e3,e5...'}))
+class ModularLocalForm(forms.Form):
+    automato = forms.FileField(widget=forms.FileInput(attrs={'class': 'form-control form-control-sm'}))
+    type = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-select form-select-sm'}), choices=ORIGEM)
 
 
-AutomataFormset = formset_factory(AutomataForm)
+class LocalizationForm(forms.Form):
+    plant = forms.FileField(widget=forms.FileInput(attrs={'class': 'form-control form-control-sm'}))
+    supervisor = forms.FileField(widget=forms.FileInput(attrs={'class': 'form-control form-control-sm'}))
+
+
+ModularLocalFormset = formset_factory(ModularLocalForm, extra=2)
+
+LocalizationFormset = formset_factory(LocalizationForm)

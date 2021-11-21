@@ -1,7 +1,7 @@
-from .supervisor import Supervisor
+from .modular_local import ModularLocal
 
 
-class SupervisorLocalizado(Supervisor):
+class SupervisorLocalizado(ModularLocal):
 
     def non_plant_event(self):
         """Encontra os eventos não controláveis devido a localização"""

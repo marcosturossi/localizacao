@@ -10,12 +10,13 @@ class C:
         self.oand = '&&'
         self.oequal = '=='
 
-    def o_create_header(self, data, univesidade, person):
-        return f"/{'*' * 50} {self.new_line}" \
+    def o_create_header(self, data, univesidade, person, obs=None):
+        return f"/*{'-' * 80} {self.new_line}" \
                f"Data:{data}{self.new_line}" \
                f"{univesidade}{self.new_line}" \
                f"{person}{self.new_line}" \
-               f"{'*' * 50}\\{self.new_line}"
+               f"{obs}{self.new_line}"\
+               f"{'-' * 80}*/{self.new_line}"
 
     def o_import(self, biblioteca):
         return f"#include<{biblioteca}>{self.new_line}"
@@ -53,8 +54,8 @@ class C:
             code += f"{self.ident * (ident + 1)}{key} = {value};{self.new_line}"
         return code + f"{self.ident * ident}}}{self.new_line}"
 
-    def o_create_array(self, name, data, ident=0):
-        return f"{self.ident * ident}{name}[{len(data)}] = {{{self.vetor_state(data)}}};{self.new_line}"
+    def o_create_array(self, type, name, data, ident=0):
+        return f"{self.ident * ident}{type} {name}[{len(data)}] = {{{self.vetor_state(data)}}};{self.new_line}"
 
     def o_array_name(self, name, position, ident=0):
         return f"{self.ident * ident}{name}[{position}]"
@@ -68,7 +69,7 @@ class C:
                 code += str(parameters[i])
         if var != "":
             var += " = "
-        return f"{self.ident * ident}{var}{name}({code}){self.new_line}"
+        return f"{self.ident * ident}{var}{name}({code});{self.new_line}"
 
     @staticmethod
     def vetor_state(state):

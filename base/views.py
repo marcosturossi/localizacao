@@ -1,8 +1,8 @@
-from django.urls import reverse_lazy
-from django.views.generic import FormView
-from django.http import HttpResponse
 from django.shortcuts import redirect
-from .forms import InputForm, AutomataFormset
+from django.urls import reverse_lazy
+from django.views.generic import FormView, TemplateView
+from django.http import HttpResponse
+from .forms import InputForm, ModularLocalFormset, LocalizationFormset
 from .reader import clean_data
 from .supervisors.localization import SupervisorLocalizado
 from .supervisors.supervisor import Supervisor, Plant
@@ -15,18 +15,21 @@ def file_request(request):
     response['Content-Disposition'] = 'attachment; filename="foo.txt"'
     return response
 
-
-class Home(FormView):
+class HomeView(TemplateView):
     template_name = 'home.html'
+
+
+class ModularLocalView(FormView):
+    template_name = 'modular_local.html'
     form_class = InputForm
     success_url = reverse_lazy('base:home')
 
     def get_context_data(self, **kwargs):
-        context = super(Home, self).get_context_data(**kwargs)
+        context = super(ModularLocalView, self).get_context_data(**kwargs)
         if self.request.method == "POST":
-            context['formset'] = AutomataFormset(self.request.POST, self.request.FILES)
+            context['formset'] = ModularLocalFormset(self.request.POST, self.request.FILES)
         else:
-            context['formset'] = AutomataFormset()
+            context['formset'] = ModularLocalFormset()
         return context
 
     def form_valid(self, form):
@@ -34,27 +37,49 @@ class Home(FormView):
         formset = context['formset']
         if formset.is_valid():
             formset = formset.cleaned_data
-            if form.cleaned_data['arquitetura'] == "ML":
-                if form.cleaned_data['linguagem'] == "C":
-                    sup = ModularLocal(C())
-                else:
-                    sup = ModularLocal(Arduino())
-                for i in formset:
-                    planta = clean_data(i['planta'])
-                    supervisor = clean_data(i['supervisor'])
-                    p, s = Plant(planta), Supervisor(supervisor)
-                    sup.set_data(p)
-                    sup.set_data(s)
-                self.request.session['code'] = sup.createcode()
+            if form.cleaned_data['linguagem'] == "C":
+                sup = ModularLocal(C())
             else:
-                self.request.session['code'] = ""
-                for i in formset:
-                    data_sup = {'plant': clean_data(i['planta']), 'supervisor': clean_data(i['supervisor'])}
-                    if form.cleaned_data['linguagem'] == "C":
-                        supervisor = SupervisorLocalizado(C())
-                    else:
-                        supervisor = SupervisorLocalizado(Arduino())
-                    supervisor.set_data(data_sup)
-                    self.request.session['code'] += supervisor.createcode()
+                sup = ModularLocal(Arduino())
+            for i in formset:
+                data = clean_data(i['automato'])
+                if i['type'] == 'S':
+                    automato = Supervisor(data)
+                else:
+                    automato = Plant(data)
+                sup.set_data(automato)
+            self.request.session['code'] = sup.createcode()
+            return redirect('base:file')
+        return super().form_valid(form)
+
+
+class LocalizationView(FormView):
+    template_name = 'localization.html'
+    form_class = InputForm
+
+    def get_context_data(self, **kwargs):
+        context = super(LocalizationView, self).get_context_data(**kwargs)
+        if self.request.method == "POST":
+            context['formset'] = LocalizationFormset(self.request.POST, self.request.FILES)
+        else:
+            context['formset'] = LocalizationFormset()
+        return context
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        formset = context['formset']
+        if formset.is_valid():
+            formset = formset.cleaned_data
+            self.request.session['code'] = ""
+            for i in formset:
+                if form.cleaned_data['linguagem'] == "C":
+                    sup = SupervisorLocalizado(C())
+                else:
+                    sup = SupervisorLocalizado(Arduino())
+                p = Plant(clean_data(i['plant']))
+                s = Supervisor(clean_data(i['supervisor']))
+                sup.set_data(p)
+                sup.set_data(s)
+                self.request.session['code'] += sup.createcode()
             return redirect('base:file')
         return super().form_valid(form)

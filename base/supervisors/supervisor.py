@@ -18,7 +18,12 @@ class Automato:
             self.states.add(i[0])
             self.states.add(i[2])
 
-    def set_named_events(self):
+    def set_named_events(self, events=None):
+        if events:
+            named_events = {}
+            for i in events:
+                named_events[str(i)] = f"EV{i}"
+            return named_events
         if not self.events:
             self.set_events()
         for i in self.events:
@@ -57,14 +62,39 @@ class Automato:
             self.set_states()
         return self.states
 
-    def get_named_events(self):
+    def get_named_events(self, events=None):
+        if events:
+            return self.set_named_events(events)
         if not self.named_events:
             self.set_named_events()
         return self.named_events
 
 
 class Plant(Automato):
-    pass
+
+    def get_correlated_events(self):
+        correlated_events = []
+        non_correlated_events = []
+        controlable = self.get_controlable()
+        non_controlable = self.get_non_controlable()
+        for j in controlable:
+            for k in non_controlable:
+                if j[0] == k[2] and j[2] == k[0]:
+                    correlated_events.append([j[1], k[1]])
+                else:
+                    non_correlated_events.append(j[1])
+                    non_correlated_events.append(k[1])
+        return self._named_correlated(correlated_events, non_correlated_events)
+
+    def _named_correlated(self, correlated, non_correlated):
+        named_correlated, named_non_correlated = [], []
+        for i in correlated:
+            named_correlated.append(self.get_named_events(i))
+        for j in non_correlated:
+            named_non_correlated.append((self.get_named_events(j)))
+        return named_correlated, named_non_correlated
+
+
 
 
 class Supervisor(Automato):
@@ -94,7 +124,7 @@ class Supervisor(Automato):
         new_transitions = []
         controlable = self.get_controlable()
         for i in controlable:
-            new_transitions.append([i[0], [1]])
+            new_transitions.append([i[0], i[1]])
         return new_transitions
 
     def set_prevent_events(self):

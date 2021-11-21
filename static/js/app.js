@@ -24,8 +24,6 @@ function addForm(e){
     totalForms.setAttribute('value', `${formNum + 1}`);
     return newForm
 }
-
-
 function removeForm(e){
     // Remove o ultimo elemento adicionado na lista de formulários
     let formList = document.querySelectorAll("#form-container");
