@@ -12,9 +12,8 @@ class ModularLocal:
             self.user = "Anonymous"
         self.plants = []
         self.supervisors = []
-        self.controlable = set()
-        self.non_controlable = set()
-        self.all_events = set()
+        self.controlable_events = set()
+        self.non_controlable_events = set()
 
     def set_data(self, data):
         self.automatos.append(data)
@@ -24,15 +23,25 @@ class ModularLocal:
             self._split_automatos()
         return self.supervisors
 
+    def get_controlable_events(self):
+        if not self.controlable_events:
+            self._set_events()
+        return self.controlable_events
+
+    def get_non_controlable_events(self):
+        if not self.non_controlable_events:
+            self._set_events()
+        return self.non_controlable_events
+
     def _set_events(self):
         """Separa os eventos controláveis e não controláveis"""
-        for i in self.automatos:
-            events = i.get_events()
-            for j in events:
-                if j % 2 == 0:
-                    self.non_controlable.add(j)
-                else:
-                    self.controlable.add(j)
+        for i in self.supervisors:
+            controlable_events = i.get_controlable()
+            non_controlable_events = i.get_non_controlable()
+            for j in controlable_events:
+                self.non_controlable_events.add(j[1])
+            for j in non_controlable_events:
+                self.non_controlable_events.add(j[1])
 
     def get_plants(self):
         if not self.plants:
@@ -81,13 +90,11 @@ class ModularLocal:
         """Declara as para armazenar os ultimo estado dos eventos não controláveis"""
         code = ""
         duplicated = []
-        for i in self.get_supervisor():
-            events_non_controlable = i.get_non_controlable()
-            for i in events_non_controlable:
-                if i[1] not in duplicated:
-                    duplicated.append(i[1])
-                    code += self.lang.o_declare_var('int', f"LS_EV{i[1]}", 0, 0)
-                    code += self.lang.o_declare_var('int', f"IN{i[1]}", 0, 0)
+        for i in self.get_non_controlable_events():
+            if i not in duplicated:
+                duplicated.append(i)
+                code += self.lang.o_declare_var('int', f"LS_EV{i}", 0, 0)
+                code += self.lang.o_declare_var('int', f"IN{i}", 0, 0)
         return code
 
     def declare_state(self):
@@ -230,13 +237,13 @@ class ModularLocal:
                     else:
                         op = 'elif'
                         condition = f"{value} == 1"
-                        action = {value+'Pin': 'LOW'}
+                        action = {value + 'Pin': 'LOW'}
                         code += self.lang.o_if(op, condition, action, 1)
             if non_correlarted:
                 for j in non_correlarted:
                     for key, value in j.items():
                         condition = f"{value} == 0"
-                        action = {value+'Pin': 'HIGH'}
+                        action = {value + 'Pin': 'HIGH'}
                         code += self.lang.o_if('if', condition, action, 1)
         return code
 

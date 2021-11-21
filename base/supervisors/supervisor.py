@@ -95,8 +95,6 @@ class Plant(Automato):
         return named_correlated, named_non_correlated
 
 
-
-
 class Supervisor(Automato):
     def __init__(self, data):
         super().__init__(data)
@@ -178,6 +176,10 @@ class Supervisor(Automato):
             self._clean_avalalanche_list()
             self._solve_avalanche_list()
             self.avalanche_solved = True
+
+    def remove_controlable(self, transitions):
+        self.controlable.pop(transitions)
+        self.non_controlable.append(transitions)
 
     def check_choice_problem(self):
         pass
