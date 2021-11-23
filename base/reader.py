@@ -5,7 +5,8 @@ def clean_data(data):
     """Retira os textos de comentário, e os espaços devolvendo o dados em uma lista"""
     new_data = []
     for line in data:
-        line = line.decode().replace('\r\n', '')
+        if type(line) != str:
+            line = line.decode().replace('\r\n', '')
         if re.search(r'^[a-zA-z0-9]', line):
             line = re.sub(r'\s+', ' ', line)
             new_data.append(line)

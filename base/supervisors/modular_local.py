@@ -36,10 +36,12 @@ class ModularLocal:
     def _set_events(self):
         """Separa os eventos controláveis e não controláveis"""
         for i in self.supervisors:
+            if not i.avalanche_checked:
+                i.check_avalanche()
             controlable_events = i.get_controlable()
             non_controlable_events = i.get_non_controlable()
             for j in controlable_events:
-                self.non_controlable_events.add(j[1])
+                self.controlable_events.add(j[1])
             for j in non_controlable_events:
                 self.non_controlable_events.add(j[1])
 
@@ -67,16 +69,23 @@ class ModularLocal:
         return self.lang.o_create_header(data, universidade, self.user, obs)
 
     def create_import(self):
-        code = self.lang.o_import('wiringPi.h')
+        if self.lang.__class__.__name__ == 'Arduino':
+            code = ""
+        else:
+            code = self.lang.o_import('wiringPi.h')
         return code
 
     def start_function(self, value):
         code = "\n"
-        code += self.lang.o_declare_function('int', 'main', value)
+        if self.lang.__class__.__name__ == 'Arduino':
+            code += self.lang.o_declare_function('void', 'setup', value)
+        else:
+            code += self.lang.o_declare_function('int', 'main', value)
+
         return code
 
     def declared_var(self):
-        code = ""
+        code = self.lang.o_coment("Declaração de Eventos", 0)
         duplicated = []
         for i in self.get_supervisor():
             named_events = i.get_named_events()
@@ -88,7 +97,7 @@ class ModularLocal:
 
     def declare_last_state(self):
         """Declara as para armazenar os ultimo estado dos eventos não controláveis"""
-        code = ""
+        code = self.lang.o_coment("Variáveis de Entrada e Memoria para Borda de Subida", 0)
         duplicated = []
         for i in self.get_non_controlable_events():
             if i not in duplicated:
@@ -98,13 +107,13 @@ class ModularLocal:
         return code
 
     def declare_state(self):
-        code = ""
+        code = self.lang.o_coment("Declaração de Estados", 0)
         for i in self.automatos:
             code += self.lang.o_create_array('int', i.get_name(), i.get_states(), ident=0)
         return code
 
     def declare_prevent_state(self):
-        code = "        // Eventos desabilitados pelo supervisor \n"
+        code = self.lang.o_coment("Eventos desabilitados pelo supervisor", 1)
         just_events = set()
         for i in self.get_supervisor():
             prevent_events = i.get_prevent_events()
@@ -116,7 +125,7 @@ class ModularLocal:
         return code + "\n"
 
     def declare_pin(self):
-        code = "// Definição dos saida GPIO\n"
+        code = self.lang.o_coment("Definição dos saida GPIO", 0)
         j = 1
         duplicated = []
         for i in self.get_supervisor():
@@ -130,18 +139,21 @@ class ModularLocal:
 
     def read_inputs(self):
         """Inicia o código com a leitura das variáveis"""
-        code = "        //Inicia a leitura das entradas \n"
+        code = self.lang.o_coment("Inicia a leitura das entradas", 1)
+        duplicated = []
         for i in self.get_supervisor():
             var = i.get_named_events()
             for j in var:
-                if int(var[j][-1]) % 2 == 0:
-                    code += self.lang.o_call_function('digitalRead', [f"{var[j]}Pin"], f"IN{var[j][-1]}", 1)
+                if not j in duplicated:
+                    duplicated.append(j)
+                    if int(var[j][-1]) % 2 == 0:
+                        code += self.lang.o_call_function('digitalRead', [f"{var[j]}Pin"], f"IN{var[j][-1]}", 1)
         return code + "\n"
 
     def format_prevent_events(self):
         op1 = 'if'
         """Desabilitação dos Eventos Controláveis pelo supervisor"""
-        code = "\n        // Desabilitação dos Eventos Controláveis pelo Supervisor\n"
+        code = self.lang.o_coment("Desabilitação dos Eventos Controláveis pelo Supervisor", 1)
         for i in self.get_supervisor():
             prevent_events = i.get_prevent_events()
             for j in prevent_events:
@@ -152,7 +164,7 @@ class ModularLocal:
 
     def update_plant_state(self):
         op1 = 'if'
-        code = "\n        // Atualização dos Estados da planta pelos eventos não controláveis\n"
+        code = self.lang.o_coment("Atualização dos Estados da planta pelos eventos não controláveis", 1)
         for i in self.plants:
             for j in i.get_non_controlable():
                 if int(j[1]) % 2 == 0:
@@ -165,39 +177,46 @@ class ModularLocal:
 
     def update_state(self, controlable=False):
         op1 = 'if'
-        """Atualização dos modelos da planta e do supervisor de acordo com os eventos não controláveis"""
-        code = f"\n        //Atualiza os estados\n"
+        """Atualização dos modelos do supervisor de acordo com os controláveis e não controláveis"""
+        if controlable:
+            var = 'controlável'
+        else:
+            var = 'não controlável'
+        code = self.lang.o_coment(f"Atualização dos Estados da Supervisor pelos Eventos {var}", 1)
         for i in self.get_supervisor():
-            i.check_avalanche()
+            if not i.avalanche_checked:
+                i.check_avalanche()
             if controlable:
                 transitions = i.get_controlable()
             else:
                 transitions = i.get_non_controlable()
             for j in transitions:
                 if j[0] != j[2]:
-                    condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} EV{j[1]} == HIGH"
+                    condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} EV{j[1]} == 1"
                     action = {f"{self.lang.o_array_name(i.get_name(), j[0])}": 0,
                               f"{self.lang.o_array_name(i.get_name(), j[2])}": 1}
                     code += self.lang.o_if(op1, condiction, action, 1)
         return code
 
     def generate_noncontrolable_events(self):
-        code = ""
+        code = self.lang.o_coment("Geração dos Eventos Controláveis", 1)
         non_controlable = set()
         for i in self.get_supervisor():
+            if not i.avalanche_checked:
+                i.check_avalanche()
             sup_non_controlable = i.get_non_controlable()
             for j in sup_non_controlable:
                 non_controlable.add(j[1])
         for i in non_controlable:
             condition = f"IN{i} != LS_EV{i} {self.lang.oand} IN{i} == HIGH"
-            action_if = f'EV{i} == 1;\n            LS_EV{i} == EV{i}'
-            action_else = f'EV{i} == 0'
+            action_if = f'EV{i} = 1;\n        LS_EV{i} = EV{i}'
+            action_else = f'LS_EV{i} = 0'
             code += self.lang.o_if_else(condition, action_if, action_else, 1)
         return code
 
     def generate_controlable_events(self):
         op1 = 'if'
-        code = "\n        // Geração dos eventos Controláveis e atualização dos estados da planta\n"
+        code = self.lang.o_coment("Geração dos eventos Controláveis e atualização dos estados da planta", 1)
         for i in self.plants:
             controlable = i.get_controlable()
             for j in controlable:
@@ -211,7 +230,7 @@ class ModularLocal:
 
     def set_pin(self):
         """São Criado os Pinos de entrada e Saida"""
-        code = "    // Declara os GPIO Pin\n"
+        code = self.lang.o_coment("Declara os GPIO Pin", 1)
         inp = 'INPUT'
         out = 'OUTPUT'
         for i in self.plants:
@@ -224,27 +243,32 @@ class ModularLocal:
         return code
 
     def write_outputs(self):
-        code = "        // Escreve os eventos na saida\n"
+        code = self.lang.o_coment("Escreve os eventos na saida", 1)
         for i in self.plants:
             correlanted, non_correlarted = i.get_correlated_events()
             for j in correlanted:
+                pin = ""
                 for key, value in j.items():
                     op = "if"
                     if int(key) % 2 != 0:
                         condition = f"{value} == 1"
-                        action = {value: 'HIGH'}
-                        code += self.lang.o_if(op, condition, action, 1)
+                        param = [value + 'Pin', 'HIGH']
+                        code += self.lang.o_write_output(op, condition, param, 1)
+                        pin = value
                     else:
-                        op = 'elif'
+                        if self.lang.__class__.__name__ == 'Arduino':
+                            op = 'else if'
+                        else:
+                            op = 'elif'
                         condition = f"{value} == 1"
-                        action = {value + 'Pin': 'LOW'}
-                        code += self.lang.o_if(op, condition, action, 1)
+                        param = [pin + 'Pin', 'LOW']
+                        code += self.lang.o_write_output(op, condition, param, 1)
             if non_correlarted:
                 for j in non_correlarted:
                     for key, value in j.items():
                         condition = f"{value} == 0"
-                        action = {value + 'Pin': 'HIGH'}
-                        code += self.lang.o_if('if', condition, action, 1)
+                        param =[value + 'Pin', 'HIGH']
+                        code += self.lang.o_write_output('if', condition, param, 1)
         return code
 
     def create_loop(self, action):

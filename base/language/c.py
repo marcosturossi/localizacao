@@ -10,6 +10,9 @@ class C:
         self.oand = '&&'
         self.oequal = '=='
 
+    def o_coment(self, comentario, ident=0):
+        return f"{self.ident * (ident)}{self.comment}{comentario} {self.new_line}"
+
     def o_create_header(self, data, univesidade, person, obs=None):
         return f"/*{'-' * 80} {self.new_line}" \
                f"Data:{data}{self.new_line}" \
@@ -54,8 +57,13 @@ class C:
             code += f"{self.ident * (ident + 1)}{key} = {value};{self.new_line}"
         return code + f"{self.ident * ident}}}{self.new_line}"
 
+    def o_write_output(self, op, condiction, parameters, ident=0):
+        code = f"{self.ident * ident}{op}({condiction}){{{self.new_line}"
+        code += f"{self.ident * (ident + 1)}" + self.o_call_function('digitalWrite', parameters)
+        return code + f"{self.ident * ident}}}{self.new_line}"
+
     def o_create_array(self, type, name, data, ident=0):
-        return f"{self.ident * ident}{type} {name}[{len(data)}] = {{{self.vetor_state(data)}}};{self.new_line}"
+        return f"{self.ident * (ident)}{type} {name}[{len(data)}] = {{{self.vetor_state(data)}}};{self.new_line}"
 
     def o_array_name(self, name, position, ident=0):
         return f"{self.ident * ident}{name}[{position}]"

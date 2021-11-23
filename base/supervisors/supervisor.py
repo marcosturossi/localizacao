@@ -30,6 +30,8 @@ class Automato:
             self.named_events[str(i)] = f"EV{i}"
 
     def _split_transitions(self):
+        self.non_controlable = []
+        self.controlable = []
         for i in self.transitions:
             if int(i[1]) % 2 == 0:
                 self.non_controlable.append(i)
@@ -71,7 +73,6 @@ class Automato:
 
 
 class Plant(Automato):
-
     def get_correlated_events(self):
         correlated_events = []
         non_correlated_events = []
@@ -99,10 +100,26 @@ class Supervisor(Automato):
     def __init__(self, data):
         super().__init__(data)
         self.avalanche = None
-        self.avalanche_solved = False
+        self.avalanche_checked = False
         self.avalanche_list = []
+        self.non_avalanche_list = []
         self.prevent_events = []
         self.choice_problem = None
+
+    def get_transitions(self):
+        if not self.avalanche_checked:
+            self.check_avalanche()
+        return super().get_transitions()
+
+    def get_controlable(self):
+        if not self.avalanche_checked:
+            self.check_avalanche()
+        return super().get_controlable()
+
+    def get_non_controlable(self):
+        if not self.avalanche_checked:
+            self.check_avalanche()
+        return super().get_non_controlable()
 
     def _get_all_possibility(self):
         """Função que cria todas as possobilidades de saida de eventos
@@ -120,8 +137,7 @@ class Supervisor(Automato):
         """Nova lista de transições com apenas o estado de saida
         e o evento"""
         new_transitions = []
-        controlable = self.get_controlable()
-        for i in controlable:
+        for i in self.get_controlable():
             new_transitions.append([i[0], i[1]])
         return new_transitions
 
@@ -134,50 +150,48 @@ class Supervisor(Automato):
     def get_prevent_events(self):
         if not self.prevent_events:
             self.set_prevent_events()
-        return self.prevent_events
-
-    def _clean_avalalanche_list(self):
-        for i in self.avalanche_list:
-            if self.avalanche_list.count(i) > 1:
-                self.avalanche_list.remove(i)
-
-    def _solve_avalanche_list(self):
-        crescent = []
-        decrescent = []
-        non_avalanche = []
-        for i in self.avalanche_list:
-            if int(i[0]) > int(i[2]):
-                crescent.append(i)
-            else:
-                decrescent.append(i)
-        crescent = sorted(crescent, reverse=True)
-        decrescent = sorted(decrescent)
-        for i in self.transitions:
-            if i not in crescent and i not in decrescent:
-                non_avalanche.append(i)
-        self.avalanche_list = []
-        for i in crescent:
-            self.avalanche_list.append(i)
-        for i in decrescent:
-            self.avalanche_list.append(i)
-        for i in non_avalanche:
-            self.avalanche_list.append(i)
+        return sorted(self.prevent_events)
 
     def check_avalanche(self):
-        trans = self.get_transitions()
+        trans = self.transitions
+        self.avalanche_list = []
+        self.non_avalanche_list = []
         for i in range(len(trans)):
             for j in range(1, len(trans)):
                 if trans[i][1] == trans[j][1] and i != j:
-                    if trans[i][2] == trans[j][0]:
+                    if trans[i][0] == trans[j][2]:
+                        self.avalanche = True
                         self.avalanche_list.append(trans[i])
                         self.avalanche_list.append(trans[j])
-                        self.avalanche = True
         if self.avalanche:
-            self._clean_avalalanche_list()
-            self._solve_avalanche_list()
-            self.avalanche_solved = True
+            self._solve_avalanche()
+        self.avalanche_checked = True
+
+    def _solve_avalanche(self):
+        crescent = []
+        decrescent = []
+        new_list = []
+        duplicated = []
+        for i in self.avalanche_list:
+            if i[0] > i[2] and i not in duplicated:
+                duplicated.append(i)
+                crescent.append(i)
+            elif i[2] > i[0] and i not in duplicated:
+                duplicated.append(i)
+                decrescent.append(i)
+        crescent = sorted(crescent)
+        decrescent = sorted(decrescent, reverse=True)
+        for i in crescent:
+            new_list.append(i)
+        for j in decrescent:
+            new_list.append(j)
+        for k in new_list:
+            self.transitions.remove(k)
+        self.transitions.extend(new_list)
+        self._split_transitions()
 
     def remove_controlable(self, transitions):
+        """Utilizado para Localização de Supervisor"""
         self.controlable.pop(transitions)
         self.non_controlable.append(transitions)
 
