@@ -117,8 +117,8 @@ class ModularLocal:
         just_events = set()
         for i in self.get_supervisor():
             prevent_events = i.get_prevent_events()
-            for i in prevent_events:
-                just_events.add(i[1])
+            for j in prevent_events:
+                just_events.add(j[1])
         for i in just_events:
             code += self.lang.o_declare_var('int', f'D_EV{i}', 0, 1)
 
@@ -144,7 +144,7 @@ class ModularLocal:
         for i in self.get_supervisor():
             var = i.get_named_events()
             for j in var:
-                if not j in duplicated:
+                if j not in duplicated:
                     duplicated.append(j)
                     if int(var[j][-1]) % 2 == 0:
                         code += self.lang.o_call_function('digitalRead', [f"{var[j]}Pin"], f"IN{var[j][-1]}", 1)
@@ -199,7 +199,7 @@ class ModularLocal:
         return code
 
     def generate_noncontrolable_events(self):
-        code = self.lang.o_coment("Geração dos Eventos Controláveis", 1)
+        code = self.lang.o_coment("Identificação da Borda de Subida", 1)
         non_controlable = set()
         for i in self.get_supervisor():
             if not i.avalanche_checked:
@@ -210,7 +210,7 @@ class ModularLocal:
         for i in non_controlable:
             condition = f"IN{i} != LS_EV{i} {self.lang.oand} IN{i} == HIGH"
             action_if = f'EV{i} = 1;\n        LS_EV{i} = EV{i}'
-            action_else = f'LS_EV{i} = 0'
+            action_else = f'LS_EV{i} = IN{i}'
             code += self.lang.o_if_else(condition, action_if, action_else, 1)
         return code
 
@@ -235,11 +235,11 @@ class ModularLocal:
         out = 'OUTPUT'
         for i in self.plants:
             events = sorted(i.get_events())
-            for i in events:
-                if int(i) % 2 == 0:
-                    code += self.lang.o_call_function('pinMode', [f"EV{i}Pin", inp], ident=1)
+            for j in events:
+                if int(j) % 2 == 0:
+                    code += self.lang.o_call_function('pinMode', [f"EV{j}Pin", inp], ident=1)
                 else:
-                    code += self.lang.o_call_function('pinMode', [f"EV{i}Pin", out], ident=1)
+                    code += self.lang.o_call_function('pinMode', [f"EV{j}Pin", out], ident=1)
         return code
 
     def write_outputs(self):
@@ -267,7 +267,7 @@ class ModularLocal:
                 for j in non_correlarted:
                     for key, value in j.items():
                         condition = f"{value} == 0"
-                        param =[value + 'Pin', 'HIGH']
+                        param = [value + 'Pin', 'HIGH']
                         code += self.lang.o_write_output('if', condition, param, 1)
         return code
 
