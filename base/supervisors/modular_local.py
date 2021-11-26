@@ -14,6 +14,8 @@ class ModularLocal:
         self.supervisors = []
         self.controlable_events = set()
         self.non_controlable_events = set()
+        self.controlable = []
+        self.non_controlable = []
 
     def set_data(self, data):
         self.automatos.append(data)
@@ -32,6 +34,25 @@ class ModularLocal:
         if not self.non_controlable_events:
             self._set_events()
         return self.non_controlable_events
+
+    def set_transitions(self):
+        for i in self.supervisors:
+            transitions = i.get_transitions()
+            for i in transitions:
+                if int(i[1]) % 2 == 0:
+                    self.non_controlable.append(i)
+                else:
+                    self.controlable.append(i)
+
+    def get_controlable(self):
+        if not self.controlable:
+            self.set_transitions()
+        return self.controlable
+
+    def get_non_controlable(self):
+        if not self.non_controlable:
+            self.set_transitions()
+        return self.non_controlable
 
     def _set_events(self):
         """Separa os eventos controláveis e não controláveis"""
@@ -118,7 +139,8 @@ class ModularLocal:
         for i in self.get_supervisor():
             prevent_events = i.get_prevent_events()
             for j in prevent_events:
-                just_events.add(j[1])
+                if j[1] not in self.non_controlable_events:
+                    just_events.add(j[1])
         for i in just_events:
             code += self.lang.o_declare_var('int', f'D_EV{i}', 0, 1)
 
@@ -140,14 +162,8 @@ class ModularLocal:
     def read_inputs(self):
         """Inicia o código com a leitura das variáveis"""
         code = self.lang.o_coment("Inicia a leitura das entradas", 1)
-        duplicated = []
-        for i in self.get_supervisor():
-            var = i.get_named_events()
-            for j in var:
-                if j not in duplicated:
-                    duplicated.append(j)
-                    if int(var[j][-1]) % 2 == 0:
-                        code += self.lang.o_call_function('digitalRead', [f"{var[j]}Pin"], f"IN{var[j][-1]}", 1)
+        for i in self.get_non_controlable_events():
+            code += self.lang.o_call_function('digitalRead', [f"EV{i}Pin"], f"IN{i}", 1)
         return code + "\n"
 
     def format_prevent_events(self):
@@ -157,9 +173,10 @@ class ModularLocal:
         for i in self.get_supervisor():
             prevent_events = i.get_prevent_events()
             for j in prevent_events:
-                condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1"
-                action = {f"D_EV{j[1]}": 1}
-                code += self.lang.o_if(op1, condiction, action, 1)
+                if j[1] not in self.get_non_controlable_events():
+                    condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1"
+                    action = {f"D_EV{j[1]}": 1}
+                    code += self.lang.o_if(op1, condiction, action, 1)
         return code
 
     def update_plant_state(self):
@@ -167,12 +184,11 @@ class ModularLocal:
         code = self.lang.o_coment("Atualização dos Estados da planta pelos eventos não controláveis", 1)
         for i in self.plants:
             for j in i.get_non_controlable():
-                if int(j[1]) % 2 == 0:
-                    condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} " \
-                                 f"EV{j[1]} == 1"
-                    action = {f"{self.lang.o_array_name(i.get_name(), j[0])}": 0,
-                              f"{self.lang.o_array_name(i.get_name(), j[2])}": 1}
-                    code += self.lang.o_if(op1, condiction, action, 1)
+                condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} " \
+                             f"EV{j[1]} == 1"
+                action = {f"{self.lang.o_array_name(i.get_name(), j[0])}": 0,
+                          f"{self.lang.o_array_name(i.get_name(), j[2])}": 1}
+                code += self.lang.o_if(op1, condiction, action, 1)
         return code
 
     def update_state(self, controlable=False):
@@ -187,9 +203,9 @@ class ModularLocal:
             if not i.avalanche_checked:
                 i.check_avalanche()
             if controlable:
-                transitions = i.get_controlable()
+                transitions = self.get_controlable()
             else:
-                transitions = i.get_non_controlable()
+                transitions = self.get_non_controlable()
             for j in transitions:
                 if j[0] != j[2]:
                     condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} EV{j[1]} == 1"
@@ -200,14 +216,10 @@ class ModularLocal:
 
     def generate_noncontrolable_events(self):
         code = self.lang.o_coment("Identificação da Borda de Subida", 1)
-        non_controlable = set()
         for i in self.get_supervisor():
             if not i.avalanche_checked:
                 i.check_avalanche()
-            sup_non_controlable = i.get_non_controlable()
-            for j in sup_non_controlable:
-                non_controlable.add(j[1])
-        for i in non_controlable:
+        for i in self.non_controlable_events:
             condition = f"IN{i} != LS_EV{i} {self.lang.oand} IN{i} == HIGH"
             action_if = f'EV{i} = 1;\n        LS_EV{i} = EV{i}'
             action_else = f'LS_EV{i} = IN{i}'

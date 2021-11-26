@@ -1,6 +1,7 @@
 from django.test import TestCase
 from .language.c import C
 from .supervisors.supervisor import Supervisor, Plant, Automato
+from .supervisors.localization import SupervisorLocalizado
 from .reader import clean_data
 
 
@@ -18,6 +19,12 @@ class Teste(TestCase):
             self.sr2 = clean_data(sr2.readlines())
         with open('base/data/sr3.ads', 'rb') as sr3:
             self.sr3 = clean_data(sr3.readlines())
+        with open('base/data/loc1.ads', 'rb') as loc1:
+            self.loc1 = clean_data(loc1.readlines())
+        with open('base/data/loc2.ads', 'rb') as loc2:
+            self.loc2 = clean_data(loc2.readlines())
+        # with open('base/data/loc3.ads', 'rb') as loc3:
+        #     self.loc3 = clean_data(loc3.readlines())
 
     def testa_automato(self):
         a1 = Automato(self.m1)
@@ -69,4 +76,13 @@ class Teste(TestCase):
 
     def testa_modular_local(self):
         pass
+
+    def testa_localizacao(self):
+        m2 = Plant(self.m2)
+        loc2 = Supervisor(self.loc2)
+        sup_loc = SupervisorLocalizado(C())
+        sup_loc.set_data(m2)
+        sup_loc.set_data(loc2)
+        self.assertEqual(sup_loc.get_non_plant_events(), ['2', '5', '8'])
+        self.assertEqual(sup_loc.get_non_controlable_events(), {'2','4','5','8'})
 
