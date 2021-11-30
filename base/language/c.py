@@ -10,6 +10,16 @@ class C:
         self.oand = '&&'
         self.oequal = '=='
 
+    def declare_disable_event(self, ident=0):
+        return f"{self.ident * ident}int disable_event (int estado){{{self.new_line}" \
+               f"{self.ident * (ident + 1)}if(estado == 1){{{self.new_line}" \
+               f"{self.ident * (ident + 2)} return 1; {self.new_line}" \
+               f"{self.ident * (ident + 1)}}}{self.new_line}" \
+               f"{self.ident * ident}{self.new_line}}} {self.new_line}"
+
+    def call_disable(self, d_event, estado, ident=0):
+        return f"{self.ident * ident}{d_event} = disable_event({estado});{self.new_line}"
+
     def o_coment(self, comentario, ident=0):
         return f"{self.ident * (ident)}{self.comment}{comentario} {self.new_line}"
 
@@ -18,7 +28,7 @@ class C:
                f"Data:{data}{self.new_line}" \
                f"{univesidade}{self.new_line}" \
                f"{person}{self.new_line}" \
-               f"{obs}{self.new_line}"\
+               f"{obs}{self.new_line}" \
                f"{'-' * 80}*/{self.new_line}"
 
     def o_import(self, biblioteca):

@@ -1,6 +1,7 @@
 from django.test import TestCase
 from .language.c import C
 from .supervisors.supervisor import Supervisor, Plant, Automato
+from .supervisors.modular_local import ModularLocal
 from .supervisors.localization import SupervisorLocalizado
 from .reader import clean_data
 
@@ -33,12 +34,12 @@ class Teste(TestCase):
         a1.set_states()
         self.assertEqual(a1.get_states(), {'0', '1'})
         a1.set_named_events()
-        self.assertEqual(a1.named_events,  {'1': 'EV1', '2': 'EV2'})
+        self.assertEqual(a1.named_events, {'1': 'EV1', '2': 'EV2'})
         a1._split_transitions()
         self.assertEqual(a1.controlable, [['0', '1', '1']])
         self.assertEqual(a1.non_controlable, [['1', '2', '0']])
         self.assertEqual(a1.get_name(), 'M1')
-        self.assertEqual(a1.get_transitions(), [['0', '1', '1'],['1', '2', '0']])
+        self.assertEqual(a1.get_transitions(), [['0', '1', '1'], ['1', '2', '0']])
 
     def testa_planta(self):
         p1 = Plant(self.m1)
@@ -75,7 +76,30 @@ class Teste(TestCase):
         self.assertEqual(s1.avalanche_checked, True)
 
     def testa_modular_local(self):
-        pass
+        m1 = Plant(self.m1)
+        m2 = Plant(self.m2)
+        tu = Plant(self.tu)
+        sr1 = Supervisor(self.sr1)
+        sr2 = Supervisor(self.sr2)
+        sr3 = Supervisor(self.sr3)
+        ml = ModularLocal(C())
+        ml.set_data(tu)
+        ml.set_data(sr3)
+        self.assertListEqual(ml.get_controlable(), [['0', '1', '0'],
+                                                    ['1', '1', '1'],
+                                                    ['1', '5', '1'],
+                                                    ['2', '1', '2'],
+                                                    ['2', '5', '2'],
+                                                    ['3', '5', '3']])
+
+        self.assertListEqual(ml.get_non_controlable(), [['1', '6', '0'],
+                                                        ['2', '6', '1'],
+                                                        ['3', '6', '2'],
+                                                        ['2', '2', '3'],
+                                                        ['1', '2', '2'],
+                                                        ['0', '2', '1']])
+        self.assertEqual(ml.get_non_controlable_events(), {'2', '6'})
+        self.assertEqual(ml.get_controlable_events(), {'1', '5'})
 
     def testa_localizacao(self):
         m2 = Plant(self.m2)
@@ -84,5 +108,4 @@ class Teste(TestCase):
         sup_loc.set_data(m2)
         sup_loc.set_data(loc2)
         self.assertEqual(sup_loc.get_non_plant_events(), ['2', '5', '8'])
-        self.assertEqual(sup_loc.get_non_controlable_events(), {'2','4','5','8'})
-
+        self.assertEqual(sup_loc.get_non_controlable_events(), {'2', '4', '5', '8'})

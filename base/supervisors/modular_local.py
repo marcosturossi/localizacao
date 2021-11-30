@@ -14,8 +14,6 @@ class ModularLocal:
         self.supervisors = []
         self.controlable_events = set()
         self.non_controlable_events = set()
-        self.controlable = []
-        self.non_controlable = []
 
     def set_data(self, data):
         self.automatos.append(data)
@@ -35,36 +33,22 @@ class ModularLocal:
             self._set_events()
         return self.non_controlable_events
 
-    def set_transitions(self):
-        for i in self.supervisors:
-            transitions = i.get_transitions()
-            for i in transitions:
-                if int(i[1]) % 2 == 0:
-                    self.non_controlable.append(i)
-                else:
-                    self.controlable.append(i)
-
-    def get_controlable(self):
-        if not self.controlable:
-            self.set_transitions()
-        return self.controlable
-
-    def get_non_controlable(self):
-        if not self.non_controlable:
-            self.set_transitions()
-        return self.non_controlable
-
     def _set_events(self):
         """Separa os eventos controláveis e não controláveis"""
-        for i in self.supervisors:
+        duplicated = []
+        for i in self.automatos:
             if not i.avalanche_checked:
                 i.check_avalanche()
             controlable_events = i.get_controlable()
             non_controlable_events = i.get_non_controlable()
             for j in controlable_events:
-                self.controlable_events.add(j[1])
+                if j not in duplicated:
+                    duplicated.append(j)
+                    self.controlable_events.add(j[1])
             for j in non_controlable_events:
-                self.non_controlable_events.add(j[1])
+                if j not in duplicated:
+                    duplicated.append(j)
+                    self.non_controlable_events.add(j[1])
 
     def get_plants(self):
         if not self.plants:
@@ -174,6 +158,7 @@ class ModularLocal:
             prevent_events = i.get_prevent_events()
             for j in prevent_events:
                 if j[1] not in self.get_non_controlable_events():
+                    # code += self.lang.call_disable(f"D_EV{j[1]}", self.lang.o_array_name(i.get_name(), j[0]), 1)
                     condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1"
                     action = {f"D_EV{j[1]}": 1}
                     code += self.lang.o_if(op1, condiction, action, 1)
@@ -182,7 +167,7 @@ class ModularLocal:
     def update_plant_state(self):
         op1 = 'if'
         code = self.lang.o_coment("Atualização dos Estados da planta pelos eventos não controláveis", 1)
-        for i in self.plants:
+        for i in self.get_plants():
             for j in i.get_non_controlable():
                 condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} " \
                              f"EV{j[1]} == 1"
@@ -203,9 +188,9 @@ class ModularLocal:
             if not i.avalanche_checked:
                 i.check_avalanche()
             if controlable:
-                transitions = self.get_controlable()
+                transitions = i.get_controlable()
             else:
-                transitions = self.get_non_controlable()
+                transitions = i.get_non_controlable()
             for j in transitions:
                 if j[0] != j[2]:
                     condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} EV{j[1]} == 1"
@@ -229,7 +214,7 @@ class ModularLocal:
     def generate_controlable_events(self):
         op1 = 'if'
         code = self.lang.o_coment("Geração dos eventos Controláveis e atualização dos estados da planta", 1)
-        for i in self.plants:
+        for i in self.get_plants():
             controlable = i.get_controlable()
             for j in controlable:
                 condiction = f"{self.lang.o_array_name(i.get_name(), j[0])} == 1 {self.lang.oand} " \
@@ -294,6 +279,7 @@ class ModularLocal:
         code += self.create_import()
         code += self.declare_pin()
         code += self.declare_state()
+        #code += self.lang.declare_disable_event()
         code += self.declare_last_state()
         code_in_main = self.set_pin()
 

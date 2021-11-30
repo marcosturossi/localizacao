@@ -192,7 +192,7 @@ class Supervisor(Automato):
 
     def remove_controlable(self, transitions):
         """Utilizado para Localização de Supervisor"""
-        self.controlable.pop(transitions)
+        self.controlable.remove(transitions)
         self.non_controlable.append(transitions)
 
     def check_choice_problem(self):
