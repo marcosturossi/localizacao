@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{%block content%}
+
+<div class="container">
+    <h2 align="center">{{object.title}}</h2>
+    {% autoescape off %}
+    {{object.get_category}}
+    {{object.description}}
+    {% endautoescape %}
+</div>
+{%endblock content%}

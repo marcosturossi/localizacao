@@ -1,32 +1,34 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<header>
     <div class="container">
-        <div class="row">
-            <div class="col-6">
-                <div class="card">
-                    <div class="card-header">
-                        Modular Local
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">C and Arduino</h5>
-                        <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                        <a href="#" class="btn btn-primary">Documentação</a>
-                    </div>
+        <section class="p-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Abordagem Modular Local</h5>
+                    <p class="card-text">A abordagem modular local, tem como principal vantagem a redução da
+                        quantidade
+                        de estados e transições em relação ao supervisor monolítico, sendo muito útil em
+                        problemas
+                        maiores</p>
+                    <a href="#" class="btn btn-primary">Saiba Mais</a>
                 </div>
             </div>
-            <div class="col-6">
-                <div class="card">
-                    <div class="card-header">
-                        Localização
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title">C and Arduino</h5>
-                        <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
-                        <a href="#" class="btn btn-primary">Documentação</a>
-                    </div>
+        </section>
+        <section class="p-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Localização de Supervisores</h5>
+                    <p class="card-text">A localização dos supervisores tem como a principal vantagem a
+                        possibilidade de
+                        distriuição do controle, onde neste caso é possível embarcar o controle em diversos
+                        dispositivos desde
+                        que haja a interface de comunicação entre eles.</p>
+                    <a href="#" class="btn btn-primary">Saiba Mais</a>
                 </div>
             </div>
-        </div>
+        </section>
     </div>
+</header>
 {% endblock content %}

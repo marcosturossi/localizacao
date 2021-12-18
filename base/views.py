@@ -1,9 +1,11 @@
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.views.generic import FormView, TemplateView
+from django.views.generic import FormView, TemplateView, ListView, DetailView
 from django.http import HttpResponse
+
 from .forms import InputForm, ModularLocalFormset, LocalizationFormset
 from .reader import clean_data
+from .models import Documentation
 from .supervisors.localization import SupervisorLocalizado
 from .supervisors.supervisor import Supervisor, Plant
 from .supervisors.modular_local import ModularLocal
@@ -15,8 +17,19 @@ def file_request(request):
     response['Content-Disposition'] = 'attachment; filename="foo.txt"'
     return response
 
+
 class HomeView(TemplateView):
     template_name = 'home.html'
+
+
+class DocumentationListView(ListView):
+    model = Documentation
+    template_name = 'documentation.html'
+
+
+class DocumentationView(DetailView):
+    model = Documentation
+    template_name = 'documentation_detail.html'
 
 
 class ModularLocalView(FormView):
